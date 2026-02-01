@@ -10,6 +10,7 @@ import (
 
 	"github.com/simonski/task/internal/db"
 	"github.com/simonski/task/internal/server"
+	"github.com/simonski/task/internal/web"
 )
 
 func main() {
@@ -42,6 +43,7 @@ func main() {
 
 	// Create server
 	srv := server.New(database)
+	srv.SetWebFS(web.FS)
 
 	// Start server
 	addr := fmt.Sprintf(":%d", *port)

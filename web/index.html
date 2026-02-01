@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Management System</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Login/Register Screen -->
+        <div id="auth-screen" class="screen">
+            <div class="auth-container">
+                <h1>Task Management System</h1>
+                <div class="auth-tabs">
+                    <button id="login-tab" class="tab-button active">Login</button>
+                    <button id="register-tab" class="tab-button">Register</button>
+                </div>
+                
+                <div id="login-form" class="auth-form">
+                    <input type="text" id="login-username" placeholder="Username" autocomplete="username">
+                    <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+                    <button id="login-button" class="primary-button">Login</button>
+                </div>
+                
+                <div id="register-form" class="auth-form hidden">
+                    <input type="text" id="register-username" placeholder="Username" autocomplete="username">
+                    <input type="password" id="register-password" placeholder="Password" autocomplete="new-password">
+                    <input type="password" id="register-password-confirm" placeholder="Confirm Password" autocomplete="new-password">
+                    <button id="register-button" class="primary-button">Register</button>
+                </div>
+                
+                <div id="auth-error" class="error-message hidden"></div>
+            </div>
+        </div>
+
+        <!-- Kanban Board Screen -->
+        <div id="board-screen" class="screen hidden">
+            <header class="app-header">
+                <h1>Task Management</h1>
+                <div class="header-controls">
+                    <select id="project-selector" class="project-dropdown">
+                        <option value="">Loading projects...</option>
+                    </select>
+                    <button id="logout-button" class="secondary-button">Logout</button>
+                </div>
+            </header>
+            
+            <div class="board-container">
+                <div class="kanban-board">
+                    <div class="kanban-column" data-status="todo">
+                        <div class="column-header">
+                            <h2>To Do</h2>
+                            <span class="task-count">0</span>
+                        </div>
+                        <div class="task-list" id="todo-tasks"></div>
+                    </div>
+                    
+                    <div class="kanban-column" data-status="in_progress">
+                        <div class="column-header">
+                            <h2>In Progress</h2>
+                            <span class="task-count">0</span>
+                        </div>
+                        <div class="task-list" id="in_progress-tasks"></div>
+                    </div>
+                    
+                    <div class="kanban-column" data-status="blocked">
+                        <div class="column-header">
+                            <h2>Blocked</h2>
+                            <span class="task-count">0</span>
+                        </div>
+                        <div class="task-list" id="blocked-tasks"></div>
+                    </div>
+                    
+                    <div class="kanban-column" data-status="completed">
+                        <div class="column-header">
+                            <h2>Completed</h2>
+                            <span class="task-count">0</span>
+                        </div>
+                        <div class="task-list" id="completed-tasks"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Task Detail Modal -->
+        <div id="task-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="task-modal-title">Task Details</h2>
+                    <button class="close-button" id="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="task-detail">
+                        <label>Description:</label>
+                        <p id="task-description"></p>
+                    </div>
+                    <div class="task-detail">
+                        <label>Status:</label>
+                        <select id="task-status-select">
+                            <option value="todo">To Do</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="blocked">Blocked</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="task-detail">
+                        <label>Priority:</label>
+                        <span id="task-priority"></span>
+                    </div>
+                    <div class="task-detail">
+                        <label>Created:</label>
+                        <span id="task-created"></span>
+                    </div>
+                    <div class="task-detail">
+                        <label>Assigned To:</label>
+                        <span id="task-assigned"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="save-task-button" class="primary-button">Save Changes</button>
+                    <button id="cancel-task-button" class="secondary-button">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/app.js"></script>
+</body>
+</html>
