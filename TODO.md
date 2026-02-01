@@ -1,14 +1,16 @@
 # TODO
 
-- `task` should render the whole usage
-- `make build` should build the binary to ./, not ./bin
-- `make` should print all make targets
-- merge all binaries to be a SINGLE binary `task` with commands the run them
-    task server
-    task orchestrator
-    task (client)
-    task initdb
-    task worker
+## Completed Improvements
+
+- [x] `task` should render the whole usage
+- [x] `make build` should build the binary to ./, not ./bin  
+- [x] `make` should print all make targets (implemented as `make help`)
+- [x] merge all binaries to be a SINGLE binary `task` with commands that run them
+    - `task server` - Start HTTP server
+    - `task orchestrator` - Start orchestrator daemon
+    - `task (client)` - CLI commands (scaffolded)
+    - `task initdb` - Initialize database
+    - `task worker` - Start worker daemon
 
 ## Next Priority Tasks
 
