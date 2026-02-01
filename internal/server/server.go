@@ -1,14 +1,18 @@
 package server
 
 import (
+	"embed"
+	"io"
 	"net/http"
+	"time"
 
 	"github.com/simonski/task/internal/db"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	db *db.DB
+	db    *db.DB
+	webFS embed.FS
 }
 
 // New creates a new server instance
@@ -16,6 +20,11 @@ func New(database *db.DB) *Server {
 	return &Server{
 		db: database,
 	}
+}
+
+// SetWebFS sets the embedded web filesystem
+func (s *Server) SetWebFS(webFS embed.FS) {
+	s.webFS = webFS
 }
 
 // Router returns the HTTP router
@@ -72,6 +81,29 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("GET /api/v1/config/{key}", s.withAuth(s.handleGetConfig))
 	mux.HandleFunc("PUT /api/v1/config/{key}", s.withAuth(s.withAdmin(s.handleSetConfig)))
 	mux.HandleFunc("DELETE /api/v1/config/{key}", s.withAuth(s.withAdmin(s.handleDeleteConfig)))
+
+	// Static file serving
+	if s.webFS != (embed.FS{}) {
+		// Serve static files
+		fileServer := http.FileServer(http.FS(s.webFS))
+		mux.Handle("GET /static/", fileServer)
+		
+		// Serve index.html for root
+		mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/" {
+				// For unknown paths, serve index.html (SPA routing)
+				indexFile, err := s.webFS.Open("index.html")
+				if err != nil {
+					http.NotFound(w, r)
+					return
+				}
+				defer indexFile.Close()
+				http.ServeContent(w, r, "index.html", time.Time{}, indexFile.(io.ReadSeeker))
+				return
+			}
+			fileServer.ServeHTTP(w, r)
+		})
+	}
 
 	return mux
 }
