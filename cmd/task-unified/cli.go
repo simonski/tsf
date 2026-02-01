@@ -91,6 +91,10 @@ func printCLIUsage() {
 	fmt.Println("  task task free -id <id>        Free task")
 	fmt.Println("  task task assign -id <id> -u   Assign task to user")
 	fmt.Println("  task task complete -id <id>    Complete task")
+	fmt.Println("  task task block -id <id> -by B Block task by another task")
+	fmt.Println("  task task unblock -id <id>     Remove task blocking")
+	fmt.Println("  task task history -id <id>     Show task history")
+	fmt.Println("  task task deps -id <id>        Show task dependencies")
 	fmt.Println()
 	fmt.Println("  task user list                 List all users")
 	fmt.Println("  task user create -u <name>     Create user")
@@ -413,6 +417,118 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		}
 		fmt.Println("Task completed:")
 		fmt.Println(string(data))
+	case "block":
+		id := extractFlag(args, "-id")
+		if id == "" {
+			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			os.Exit(1)
+		}
+		blockedBy := extractFlag(args, "-by")
+		if blockedBy == "" {
+			fmt.Fprintln(os.Stderr, "Error: -by flag required (task ID that blocks this task)")
+			os.Exit(1)
+		}
+		body := map[string]interface{}{"depends_on_task_id": blockedBy}
+		data, err := client.Request("PUT", "/api/v1/tasks/"+id, body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Task %s is now blocked by %s\n", id, blockedBy)
+		if config.JSON {
+			fmt.Println(string(data))
+		}
+	case "unblock":
+		id := extractFlag(args, "-id")
+		if id == "" {
+			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			os.Exit(1)
+		}
+		// Send null to clear the dependency
+		body := map[string]interface{}{"depends_on_task_id": nil}
+		data, err := client.Request("PUT", "/api/v1/tasks/"+id, body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Task %s is now unblocked\n", id)
+		if config.JSON {
+			fmt.Println(string(data))
+		}
+	case "history":
+		id := extractFlag(args, "-id")
+		if id == "" {
+			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			os.Exit(1)
+		}
+		data, err := client.Request("GET", "/api/v1/tasks/"+id+"/history", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if config.JSON {
+			fmt.Println(string(data))
+		} else {
+			var history []map[string]interface{}
+			if err := parseJSON(data, &history); err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing response: %v\n", err)
+				os.Exit(1)
+			}
+			if len(history) == 0 {
+				fmt.Println("No history entries found")
+				return
+			}
+			fmt.Printf("Task history (%d entries):\n\n", len(history))
+			for _, h := range history {
+				fmt.Printf("State:    %v\n", h["state"])
+				fmt.Printf("Started:  %v\n", h["started_at"])
+				if ended, ok := h["ended_at"]; ok && ended != nil {
+					fmt.Printf("Ended:    %v\n", ended)
+				}
+				if worker, ok := h["worker_id"]; ok && worker != nil {
+					fmt.Printf("Worker:   %v\n", worker)
+				}
+				if notes, ok := h["notes"]; ok && notes != nil {
+					fmt.Printf("Notes:    %v\n", notes)
+				}
+				fmt.Println()
+			}
+		}
+	case "deps", "dependencies":
+		id := extractFlag(args, "-id")
+		if id == "" {
+			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			os.Exit(1)
+		}
+		data, err := client.Request("GET", "/api/v1/tasks/"+id+"/dependencies", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if config.JSON {
+			fmt.Println(string(data))
+		} else {
+			var deps map[string]interface{}
+			if err := parseJSON(data, &deps); err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing response: %v\n", err)
+				os.Exit(1)
+			}
+			if blockedBy, ok := deps["blocked_by"]; ok && blockedBy != nil {
+				fmt.Printf("Blocked by: %v\n", blockedBy)
+			} else {
+				fmt.Println("No dependencies")
+			}
+			if blocking, ok := deps["blocking"]; ok {
+				if blockingArr, ok := blocking.([]interface{}); ok && len(blockingArr) > 0 {
+					fmt.Printf("Blocking %d tasks:\n", len(blockingArr))
+					for _, t := range blockingArr {
+						if task, ok := t.(map[string]interface{}); ok {
+							fmt.Printf("  - %v: %v\n", task["id"], task["title"])
+						}
+					}
+				}
+			}
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown task subcommand: %s\n", subcommand)
 		os.Exit(1)

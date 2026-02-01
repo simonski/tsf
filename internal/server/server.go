@@ -34,8 +34,16 @@ func (s *Server) Router() http.Handler {
 	// Health check (no auth required)
 	mux.HandleFunc("GET /api/v1/health", s.handleHealth)
 
-	// Auth endpoints
+	// Metrics endpoints (no auth for Prometheus scraping)
+	mux.HandleFunc("GET /api/v1/metrics", s.withAuth(s.handleMetrics))
+	mux.HandleFunc("GET /metrics", s.handlePrometheusMetrics)
+
+	// Auth endpoints (no auth required for login)
 	mux.HandleFunc("POST /api/v1/auth/register", s.handleRegisterUser)
+	mux.HandleFunc("POST /api/v1/auth/login", s.handleLogin)
+	mux.HandleFunc("POST /api/v1/auth/refresh", s.handleRefresh)
+	mux.HandleFunc("POST /api/v1/auth/logout", s.handleLogout)
+	mux.HandleFunc("GET /api/v1/auth/me", s.withAuth(s.handleMe))
 
 	// User endpoints
 	mux.HandleFunc("GET /api/v1/users", s.withAuth(s.handleListUsers))
@@ -68,6 +76,7 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("POST /api/v1/tasks/{task_id}/free", s.withAuth(s.handleFreeTask))
 	mux.HandleFunc("POST /api/v1/tasks/{task_id}/complete", s.withAuth(s.handleCompleteTask))
 	mux.HandleFunc("GET /api/v1/tasks/{task_id}/history", s.withAuth(s.handleGetTaskHistory))
+	mux.HandleFunc("GET /api/v1/tasks/{task_id}/dependencies", s.withAuth(s.handleGetTaskDependencies))
 
 	// Worker endpoints
 	mux.HandleFunc("POST /api/v1/workers/request", s.withAuth(s.handleWorkerRequest))

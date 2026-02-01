@@ -164,28 +164,85 @@ func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	taskID := r.PathValue("task_id")
 
-	var req TaskRequest
-	if err := decodeJSON(r, &req); err != nil {
+	// Use json.RawMessage to detect explicit null for depends_on_task_id
+	var rawBody map[string]json.RawMessage
+	if err := decodeJSON(r, &rawBody); err != nil {
 		sendError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	labelsJSON, _ := json.Marshal(req.Labels)
+	// Build dynamic update query
+	updates := []string{}
+	args := []interface{}{}
 
-	_, err := s.db.Conn().Exec(`
-		UPDATE tasks
-		SET title = COALESCE(?, title),
-		    description = COALESCE(?, description),
-		    acceptance_criteria = COALESCE(?, acceptance_criteria),
-		    depends_on_task_id = COALESCE(?, depends_on_task_id),
-		    priority = COALESCE(?, priority),
-		    labels = COALESCE(?, labels),
-		    estimated_effort = COALESCE(?, estimated_effort),
-		    updated_by = ?,
-		    updated_at = ?
-		WHERE id = ?
-	`, req.Title, req.Description, req.AcceptanceCriteria, req.DependsOnTaskID, req.Priority,
-		string(labelsJSON), req.EstimatedEffort, user.ID, time.Now(), taskID)
+	if v, ok := rawBody["title"]; ok {
+		var val string
+		if json.Unmarshal(v, &val) == nil && val != "" {
+			updates = append(updates, "title = ?")
+			args = append(args, val)
+		}
+	}
+	if v, ok := rawBody["description"]; ok {
+		var val string
+		if json.Unmarshal(v, &val) == nil {
+			updates = append(updates, "description = ?")
+			args = append(args, val)
+		}
+	}
+	if v, ok := rawBody["acceptance_criteria"]; ok {
+		var val *string
+		if json.Unmarshal(v, &val) == nil {
+			updates = append(updates, "acceptance_criteria = ?")
+			args = append(args, val)
+		}
+	}
+	if v, ok := rawBody["depends_on_task_id"]; ok {
+		// Check if explicitly null or has a value
+		if string(v) == "null" {
+			updates = append(updates, "depends_on_task_id = NULL")
+		} else {
+			var val string
+			if json.Unmarshal(v, &val) == nil && val != "" {
+				updates = append(updates, "depends_on_task_id = ?")
+				args = append(args, val)
+			}
+		}
+	}
+	if v, ok := rawBody["priority"]; ok {
+		var val string
+		if json.Unmarshal(v, &val) == nil && val != "" {
+			updates = append(updates, "priority = ?")
+			args = append(args, val)
+		}
+	}
+	if v, ok := rawBody["labels"]; ok {
+		var val []string
+		if json.Unmarshal(v, &val) == nil {
+			labelsJSON, _ := json.Marshal(val)
+			updates = append(updates, "labels = ?")
+			args = append(args, string(labelsJSON))
+		}
+	}
+	if v, ok := rawBody["estimated_effort"]; ok {
+		var val *int
+		if json.Unmarshal(v, &val) == nil {
+			updates = append(updates, "estimated_effort = ?")
+			args = append(args, val)
+		}
+	}
+
+	if len(updates) == 0 {
+		sendError(w, http.StatusBadRequest, "no fields to update")
+		return
+	}
+
+	// Add updated_by and updated_at
+	updates = append(updates, "updated_by = ?", "updated_at = ?")
+	args = append(args, user.ID, time.Now())
+	args = append(args, taskID)
+
+	query := "UPDATE tasks SET " + joinWithComma(updates) + " WHERE id = ?"
+	_, err := s.db.Conn().Exec(query, args...)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to update task")
 		return
@@ -202,6 +259,17 @@ func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendJSON(w, http.StatusOK, task)
+}
+
+func joinWithComma(parts []string) string {
+	result := ""
+	for i, p := range parts {
+		if i > 0 {
+			result += ", "
+		}
+		result += p
+	}
+	return result
 }
 
 // handleDeleteTask deletes a task
@@ -241,9 +309,10 @@ func (s *Server) handleClaimTask(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	// Check task is idle
+	// Check task exists and is idle, also get dependency info
 	var status string
-	err = tx.QueryRow("SELECT status FROM tasks WHERE id = ?", taskID).Scan(&status)
+	var dependsOnTaskID sql.NullString
+	err = tx.QueryRow("SELECT status, depends_on_task_id FROM tasks WHERE id = ?", taskID).Scan(&status, &dependsOnTaskID)
 	if err == sql.ErrNoRows {
 		sendError(w, http.StatusNotFound, "task not found")
 		return
@@ -256,6 +325,16 @@ func (s *Server) handleClaimTask(w http.ResponseWriter, r *http.Request) {
 	if status != "idle" {
 		sendError(w, http.StatusBadRequest, "task is not available")
 		return
+	}
+
+	// Check if blocked by incomplete dependency
+	if dependsOnTaskID.Valid {
+		var depComplete bool
+		err = tx.QueryRow("SELECT is_complete FROM tasks WHERE id = ?", dependsOnTaskID.String).Scan(&depComplete)
+		if err == nil && !depComplete {
+			sendError(w, http.StatusConflict, "task is blocked by incomplete dependency")
+			return
+		}
 	}
 
 	// Update task
@@ -342,14 +421,42 @@ func (s *Server) handleFreeTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	taskID := r.PathValue("task_id")
+	now := time.Now()
 
-	_, err := s.db.Conn().Exec(`
+	// Start transaction
+	tx, err := s.db.Conn().Begin()
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to start transaction")
+		return
+	}
+	defer tx.Rollback()
+
+	// Update task
+	_, err = tx.Exec(`
 		UPDATE tasks
 		SET status = 'idle', worker_id = NULL, updated_by = ?, updated_at = ?
 		WHERE id = ?
-	`, user.ID, time.Now(), taskID)
+	`, user.ID, now, taskID)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to free task")
+		return
+	}
+
+	// Update the most recent in-progress history entry to abandoned
+	tx.Exec(`
+		UPDATE task_history
+		SET state = 'abandoned', completed_at = ?
+		WHERE id = (
+			SELECT id FROM task_history 
+			WHERE task_id = ? AND state = 'in-progress'
+			ORDER BY started_at DESC
+			LIMIT 1
+		)
+	`, now, taskID)
+	// Ignore error - may not have a history entry
+
+	if err := tx.Commit(); err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to commit transaction")
 		return
 	}
 
@@ -376,13 +483,52 @@ func (s *Server) handleCompleteTask(w http.ResponseWriter, r *http.Request) {
 
 	taskID := r.PathValue("task_id")
 
-	_, err := s.db.Conn().Exec(`
+	// Parse optional notes from body
+	var body struct {
+		Notes string `json:"notes"`
+	}
+	decodeJSON(r, &body)
+
+	now := time.Now()
+
+	// Start transaction
+	tx, err := s.db.Conn().Begin()
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to start transaction")
+		return
+	}
+	defer tx.Rollback()
+
+	// Update task
+	_, err = tx.Exec(`
 		UPDATE tasks
 		SET status = 'idle', worker_id = NULL, is_complete = 1, completed_at = ?, updated_by = ?, updated_at = ?
 		WHERE id = ?
-	`, time.Now(), user.ID, time.Now(), taskID)
+	`, now, user.ID, now, taskID)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to complete task")
+		return
+	}
+
+	// Update the most recent in-progress history entry to success
+	var notes interface{} = nil
+	if body.Notes != "" {
+		notes = body.Notes
+	}
+	_, err = tx.Exec(`
+		UPDATE task_history
+		SET state = 'success', completed_at = ?, notes = COALESCE(?, notes)
+		WHERE id = (
+			SELECT id FROM task_history 
+			WHERE task_id = ? AND state = 'in-progress'
+			ORDER BY started_at DESC
+			LIMIT 1
+		)
+	`, now, notes, taskID)
+	// Ignore error - may not have a history entry
+
+	if err := tx.Commit(); err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to commit transaction")
 		return
 	}
 
@@ -525,4 +671,66 @@ func scanTask(scanner interface {
 	}
 
 	return task, nil
+}
+
+// handleGetTaskDependencies returns the dependency information for a task
+func (s *Server) handleGetTaskDependencies(w http.ResponseWriter, r *http.Request) {
+	taskID := r.PathValue("task_id")
+
+	// Get the task's dependency (what it's blocked by)
+	var dependsOnTaskID sql.NullString
+	err := s.db.Conn().QueryRow("SELECT depends_on_task_id FROM tasks WHERE id = ?", taskID).Scan(&dependsOnTaskID)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusNotFound, "task not found")
+		return
+	}
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to query task")
+		return
+	}
+
+	result := map[string]interface{}{
+		"task_id": taskID,
+	}
+
+	// If this task is blocked by another, include that info
+	if dependsOnTaskID.Valid {
+		blockedByTask, err := s.getTaskByID(dependsOnTaskID.String)
+		if err == nil {
+			result["blocked_by"] = map[string]interface{}{
+				"id":          blockedByTask.ID,
+				"title":       blockedByTask.Title,
+				"status":      blockedByTask.Status,
+				"is_complete": blockedByTask.IsComplete,
+			}
+		}
+	}
+
+	// Find tasks that are blocked by this task
+	rows, err := s.db.Conn().Query(`
+		SELECT id, title, status, is_complete
+		FROM tasks
+		WHERE depends_on_task_id = ?
+	`, taskID)
+	if err == nil {
+		defer rows.Close()
+		var blocking []map[string]interface{}
+		for rows.Next() {
+			var id, title, status string
+			var isComplete bool
+			if err := rows.Scan(&id, &title, &status, &isComplete); err == nil {
+				blocking = append(blocking, map[string]interface{}{
+					"id":          id,
+					"title":       title,
+					"status":      status,
+					"is_complete": isComplete,
+				})
+			}
+		}
+		if len(blocking) > 0 {
+			result["blocking"] = blocking
+		}
+	}
+
+	sendJSON(w, http.StatusOK, result)
 }

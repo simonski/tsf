@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/simonski/task/internal/db"
 )
 
@@ -15,7 +16,7 @@ const (
 	contextKeyUser contextKey = "user"
 )
 
-// withAuth middleware checks Basic Auth credentials
+// withAuth middleware checks Basic Auth or Bearer token credentials
 func (s *Server) withAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get Authorization header
@@ -25,48 +26,25 @@ func (s *Server) withAuth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// Parse Basic Auth
-		if !strings.HasPrefix(auth, "Basic ") {
+		var user *db.User
+		var err error
+
+		if strings.HasPrefix(auth, "Bearer ") {
+			// JWT token authentication
+			user, err = s.authenticateJWT(auth[7:])
+			if err != nil {
+				sendError(w, http.StatusUnauthorized, "invalid or expired token")
+				return
+			}
+		} else if strings.HasPrefix(auth, "Basic ") {
+			// Basic Auth
+			user, err = s.authenticateBasic(auth[6:])
+			if err != nil {
+				sendError(w, http.StatusUnauthorized, err.Error())
+				return
+			}
+		} else {
 			sendError(w, http.StatusUnauthorized, "invalid authorization scheme")
-			return
-		}
-
-		// Decode credentials
-		payload, err := base64.StdEncoding.DecodeString(auth[6:])
-		if err != nil {
-			sendError(w, http.StatusUnauthorized, "invalid authorization format")
-			return
-		}
-
-		// Split username:password
-		credentials := string(payload)
-		parts := strings.SplitN(credentials, ":", 2)
-		if len(parts) != 2 {
-			sendError(w, http.StatusUnauthorized, "invalid credentials format")
-			return
-		}
-
-		username := parts[0]
-		password := parts[1]
-
-		// Query user from database - use strings for timestamps due to SQLite
-		var user db.User
-		var createdAt, updatedAt string
-		err = s.db.Conn().QueryRow(`
-			SELECT id, username, password_hash, type, is_active, created_at, updated_at
-			FROM users
-			WHERE username = ?
-		`, username).Scan(
-			&user.ID,
-			&user.Username,
-			&user.PasswordHash,
-			&user.Type,
-			&user.IsActive,
-			&createdAt,
-			&updatedAt,
-		)
-		if err != nil {
-			sendError(w, http.StatusUnauthorized, "invalid credentials")
 			return
 		}
 
@@ -76,17 +54,84 @@ func (s *Server) withAuth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// Verify password
-		valid, err := db.VerifyPassword(password, user.PasswordHash)
-		if err != nil || !valid {
-			sendError(w, http.StatusUnauthorized, "invalid credentials")
-			return
-		}
-
 		// Add user to context
-		ctx := context.WithValue(r.Context(), contextKeyUser, &user)
+		ctx := context.WithValue(r.Context(), contextKeyUser, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
+}
+
+// authenticateJWT validates a JWT token and returns the user
+func (s *Server) authenticateJWT(tokenString string) (*db.User, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return JWTSecret, nil
+	})
+	if err != nil || !token.Valid {
+		return nil, err
+	}
+
+	// Get user from database
+	var user db.User
+	var createdAt, updatedAt string
+	err = s.db.Conn().QueryRow(`
+		SELECT id, username, password_hash, type, is_active, created_at, updated_at
+		FROM users WHERE id = ?
+	`, claims.UserID).Scan(
+		&user.ID,
+		&user.Username,
+		&user.PasswordHash,
+		&user.Type,
+		&user.IsActive,
+		&createdAt,
+		&updatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+// authenticateBasic validates Basic Auth credentials and returns the user
+func (s *Server) authenticateBasic(encoded string) (*db.User, error) {
+	payload, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, err
+	}
+
+	credentials := string(payload)
+	parts := strings.SplitN(credentials, ":", 2)
+	if len(parts) != 2 {
+		return nil, err
+	}
+
+	username := parts[0]
+	password := parts[1]
+
+	var user db.User
+	var createdAt, updatedAt string
+	err = s.db.Conn().QueryRow(`
+		SELECT id, username, password_hash, type, is_active, created_at, updated_at
+		FROM users WHERE username = ?
+	`, username).Scan(
+		&user.ID,
+		&user.Username,
+		&user.PasswordHash,
+		&user.Type,
+		&user.IsActive,
+		&createdAt,
+		&updatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	valid, err := db.VerifyPassword(password, user.PasswordHash)
+	if err != nil || !valid {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 // withAdmin middleware checks if user is admin

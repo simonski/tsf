@@ -140,9 +140,9 @@ func (s *Server) handleGetUser(w http.ResponseWriter, r *http.Request) {
 
 // handleEnableUser enables a user
 func (s *Server) handleEnableUser(w http.ResponseWriter, r *http.Request) {
-	userID := r.PathValue("user_id")
+	username := r.PathValue("username")
 
-	result, err := s.db.Conn().Exec("UPDATE users SET is_active = ? WHERE id = ?", true, userID)
+	result, err := s.db.Conn().Exec("UPDATE users SET is_active = ? WHERE username = ?", true, username)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to enable user")
 		return
@@ -155,11 +155,12 @@ func (s *Server) handleEnableUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user db.User
+	var createdAt, updatedAt string
 	err = s.db.Conn().QueryRow(`
 		SELECT id, username, type, is_active, created_at, updated_at
 		FROM users
-		WHERE id = ?
-	`, userID).Scan(&user.ID, &user.Username, &user.Type, &user.IsActive, &user.CreatedAt, &user.UpdatedAt)
+		WHERE username = ?
+	`, username).Scan(&user.ID, &user.Username, &user.Type, &user.IsActive, &createdAt, &updatedAt)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to retrieve user")
 		return
@@ -170,25 +171,15 @@ func (s *Server) handleEnableUser(w http.ResponseWriter, r *http.Request) {
 
 // handleDisableUser disables a user
 func (s *Server) handleDisableUser(w http.ResponseWriter, r *http.Request) {
-	userID := r.PathValue("user_id")
+	username := r.PathValue("username")
 
 	// Prevent disabling admin
-	var username string
-	err := s.db.Conn().QueryRow("SELECT username FROM users WHERE id = ?", userID).Scan(&username)
-	if err == sql.ErrNoRows {
-		sendError(w, http.StatusNotFound, "user not found")
-		return
-	}
-	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to query user")
-		return
-	}
 	if username == "admin" {
 		sendError(w, http.StatusBadRequest, "cannot disable admin user")
 		return
 	}
 
-	result, err := s.db.Conn().Exec("UPDATE users SET is_active = ? WHERE id = ?", false, userID)
+	result, err := s.db.Conn().Exec("UPDATE users SET is_active = ? WHERE username = ?", false, username)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to disable user")
 		return
@@ -201,11 +192,12 @@ func (s *Server) handleDisableUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user db.User
+	var createdAt, updatedAt string
 	err = s.db.Conn().QueryRow(`
 		SELECT id, username, type, is_active, created_at, updated_at
 		FROM users
-		WHERE id = ?
-	`, userID).Scan(&user.ID, &user.Username, &user.Type, &user.IsActive, &user.CreatedAt, &user.UpdatedAt)
+		WHERE username = ?
+	`, username).Scan(&user.ID, &user.Username, &user.Type, &user.IsActive, &createdAt, &updatedAt)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to retrieve user")
 		return

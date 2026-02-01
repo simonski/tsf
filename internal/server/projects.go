@@ -201,11 +201,11 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 
 	_, err := s.db.Conn().Exec(`
 		UPDATE projects
-		SET name = COALESCE(?, name),
-		    description = COALESCE(?, description),
+		SET name = COALESCE(NULLIF(?, ''), name),
+		    description = COALESCE(NULLIF(?, ''), description),
 		    repository = COALESCE(?, repository),
-		    status = COALESCE(?, status),
-		    visibility = COALESCE(?, visibility),
+		    status = COALESCE(NULLIF(?, ''), status),
+		    visibility = COALESCE(NULLIF(?, ''), visibility),
 		    updated_by = ?,
 		    updated_at = ?
 		WHERE id = ?
