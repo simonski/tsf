@@ -1,0 +1,1503 @@
+openapi: 3.0.3
+info:
+  title: Task Management System API
+  description: RESTful API for managing projects, tasks, roles, and workers in a kanban-style workflow system
+  version: 1.0.0
+  contact:
+    name: Task Management System
+    
+servers:
+  - url: https://localhost:8080/api/v1
+    description: Local development server
+    
+security:
+  - basicAuth: []
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+      required:
+        - error
+        
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        type:
+          type: string
+          enum: [human, worker, orchestrator]
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - username
+        - type
+        - is_active
+        
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        repository:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive]
+        visibility:
+          type: string
+          enum: [public, internal, private]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+          format: uuid
+        updated_by:
+          type: string
+          format: uuid
+      required:
+        - id
+        - name
+        - description
+        - status
+        - visibility
+        
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        rules:
+          type: string
+        scope:
+          type: string
+          enum: [system, global, project]
+        project_id:
+          type: string
+          format: uuid
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+          format: uuid
+        updated_by:
+          type: string
+          format: uuid
+      required:
+        - id
+        - name
+        - description
+        - rules
+        - scope
+        - is_active
+        
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        type:
+          type: string
+          enum: [epic, story, task, sub-task, bug, spike]
+        description:
+          type: string
+        acceptance_criteria:
+          type: string
+          nullable: true
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        epic_id:
+          type: string
+          format: uuid
+          nullable: true
+        depends_on_task_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [idle, active]
+        worker_id:
+          type: string
+          format: uuid
+          nullable: true
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        is_complete:
+          type: boolean
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+          format: uuid
+        updated_by:
+          type: string
+          format: uuid
+        labels:
+          type: array
+          items:
+            type: string
+        estimated_effort:
+          type: integer
+          nullable: true
+        actual_effort:
+          type: integer
+          nullable: true
+      required:
+        - id
+        - project_id
+        - title
+        - type
+        - description
+        - status
+        - priority
+        - is_complete
+        
+    TaskHistory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        task_id:
+          type: string
+          format: uuid
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        state:
+          type: string
+          enum: [success, failure, abandoned, in-progress]
+        worker_id:
+          type: string
+          format: uuid
+        role_id:
+          type: string
+          format: uuid
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - task_id
+        - started_at
+        - state
+        - worker_id
+        - role_id
+        
+    Config:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - key
+        - value
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns server health status
+      security: []
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                    
+  /auth/register:
+    post:
+      summary: Register a new user
+      description: Create a new user account (human or worker type)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                type:
+                  type: string
+                  enum: [human, worker]
+              required:
+                - username
+                - password
+                - type
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Username already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /users:
+    get:
+      summary: List all users
+      description: Get list of all users (requires authentication)
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /users/{user_id}:
+    get:
+      summary: Get user by ID
+      description: Get detailed information about a specific user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /users/{username}/enable:
+    post:
+      summary: Enable a user
+      description: Enable a disabled user account (admin only)
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User enabled successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - admin only
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /users/{username}/disable:
+    post:
+      summary: Disable a user
+      description: Disable a user account (admin only)
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User disabled successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - admin only
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /projects:
+    get:
+      summary: List all projects
+      description: Get list of all projects (filtered by visibility and permissions)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive]
+          description: Filter by project status
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    post:
+      summary: Create a new project
+      description: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                repository:
+                  type: string
+                  nullable: true
+                status:
+                  type: string
+                  enum: [active, inactive]
+                visibility:
+                  type: string
+                  enum: [public, internal, private]
+              required:
+                - name
+                - description
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Project name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /projects/{project_id}:
+    get:
+      summary: Get project by ID
+      description: Get detailed information about a specific project
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    put:
+      summary: Update project
+      description: Update an existing project
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                repository:
+                  type: string
+                  nullable: true
+                status:
+                  type: string
+                  enum: [active, inactive]
+                visibility:
+                  type: string
+                  enum: [public, internal, private]
+      responses:
+        '200':
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    delete:
+      summary: Delete project
+      description: Delete a project (must have no tasks)
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Project deleted successfully
+        '400':
+          description: Cannot delete project with tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /roles:
+    get:
+      summary: List all roles
+      description: Get list of all roles (system, global, and accessible project roles)
+      parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [system, global, project]
+          description: Filter by role scope
+        - name: project_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by project (for project-scoped roles)
+      responses:
+        '200':
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    post:
+      summary: Create a new role
+      description: Create a new global or project-scoped role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                rules:
+                  type: string
+                scope:
+                  type: string
+                  enum: [global, project]
+                project_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+              required:
+                - name
+                - description
+                - rules
+                - scope
+      responses:
+        '201':
+          description: Role created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Role name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /roles/{role_id}:
+    get:
+      summary: Get role by ID
+      description: Get detailed information about a specific role
+      parameters:
+        - name: role_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Role details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '404':
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    put:
+      summary: Update role
+      description: Update an existing role (cannot update system roles)
+      parameters:
+        - name: role_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                rules:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Role updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          description: Invalid input or cannot modify system role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    delete:
+      summary: Delete role
+      description: Delete a role (cannot delete system roles or roles in use)
+      parameters:
+        - name: role_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Role deleted successfully
+        '400':
+          description: Cannot delete system role or role in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /tasks:
+    get:
+      summary: List tasks
+      description: Get list of tasks with optional filters
+      parameters:
+        - name: project_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by project
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [idle, active]
+          description: Filter by status
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [epic, story, task, sub-task, bug, spike]
+          description: Filter by task type
+        - name: worker_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by assigned worker
+        - name: is_complete
+          in: query
+          schema:
+            type: boolean
+          description: Filter by completion status
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high, critical]
+          description: Filter by priority
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    post:
+      summary: Create a new task
+      description: Create a new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_id:
+                  type: string
+                  format: uuid
+                title:
+                  type: string
+                type:
+                  type: string
+                  enum: [epic, story, task, sub-task, bug, spike]
+                description:
+                  type: string
+                acceptance_criteria:
+                  type: string
+                  nullable: true
+                parent_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                epic_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                depends_on_task_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                priority:
+                  type: string
+                  enum: [low, medium, high, critical]
+                labels:
+                  type: array
+                  items:
+                    type: string
+                estimated_effort:
+                  type: integer
+                  nullable: true
+              required:
+                - project_id
+                - title
+                - type
+                - description
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /tasks/{task_id}:
+    get:
+      summary: Get task by ID
+      description: Get detailed information about a specific task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    put:
+      summary: Update task
+      description: Update an existing task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                acceptance_criteria:
+                  type: string
+                  nullable: true
+                depends_on_task_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                priority:
+                  type: string
+                  enum: [low, medium, high, critical]
+                labels:
+                  type: array
+                  items:
+                    type: string
+                estimated_effort:
+                  type: integer
+                  nullable: true
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    delete:
+      summary: Delete task
+      description: Delete a task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Task deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /tasks/{task_id}/claim:
+    post:
+      summary: Claim a task
+      description: Claim a task for the authenticated user
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task claimed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Task already claimed or not in claimable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /tasks/{task_id}/assign:
+    post:
+      summary: Assign a task
+      description: Assign a task to a specific user
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+              required:
+                - user_id
+      responses:
+        '200':
+          description: Task assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid input or task not in assignable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task or user not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /tasks/{task_id}/free:
+    post:
+      summary: Free a task
+      description: Release a task from its current assignment
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task freed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Task not assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /tasks/{task_id}/complete:
+    post:
+      summary: Mark task as complete
+      description: Mark a task as complete
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task marked as complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Task cannot be completed (dependencies not met)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /tasks/{task_id}/history:
+    get:
+      summary: Get task history
+      description: Get work history for a specific task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskHistory'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /workers/request:
+    post:
+      summary: Request work
+      description: Request a task to work on (for workers)
+      responses:
+        '200':
+          description: Task assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+                  role:
+                    $ref: '#/components/schemas/Role'
+        '204':
+          description: No work available
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - only workers can request work
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /workers/heartbeat:
+    post:
+      summary: Worker heartbeat
+      description: Send heartbeat to indicate worker is alive
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [idle, working]
+                task_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        '200':
+          description: Heartbeat acknowledged
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /orchestrator/heartbeat:
+    post:
+      summary: Orchestrator heartbeat
+      description: Send heartbeat to indicate orchestrator is alive
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [active, idle]
+      responses:
+        '200':
+          description: Heartbeat acknowledged
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /config:
+    get:
+      summary: List all configuration
+      description: Get all configuration key-value pairs
+      responses:
+        '200':
+          description: List of configuration
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Config'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /config/{key}:
+    get:
+      summary: Get configuration value
+      description: Get a specific configuration value
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Configuration value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Config'
+        '404':
+          description: Configuration key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    put:
+      summary: Set configuration value
+      description: Set or update a configuration value (admin only)
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+              required:
+                - value
+      responses:
+        '200':
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Config'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - admin only
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    delete:
+      summary: Delete configuration
+      description: Delete a configuration key-value pair (admin only)
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Configuration deleted
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - admin only
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Configuration key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
