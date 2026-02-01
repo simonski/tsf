@@ -47,6 +47,7 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var project db.Project
 		var repository sql.NullString
+		var createdAt, updatedAt string
 		err := rows.Scan(
 			&project.ID,
 			&project.Name,
@@ -54,8 +55,8 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 			&repository,
 			&project.Status,
 			&project.Visibility,
-			&project.CreatedAt,
-			&project.UpdatedAt,
+			&createdAt,
+			&updatedAt,
 			&project.CreatedBy,
 			&project.UpdatedBy,
 		)
@@ -63,6 +64,8 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 			sendError(w, http.StatusInternalServerError, "failed to scan project")
 			return
 		}
+		project.CreatedAt = parseTimestamp(createdAt)
+		project.UpdatedAt = parseTimestamp(updatedAt)
 		if repository.Valid {
 			project.Repository = &repository.String
 		}
@@ -110,6 +113,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 
 	var project db.Project
 	var repository sql.NullString
+	var createdAt, updatedAt string
 	err = s.db.Conn().QueryRow(`
 		SELECT id, name, description, repository, status, visibility, created_at, updated_at, created_by, updated_by
 		FROM projects
@@ -121,8 +125,8 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 		&repository,
 		&project.Status,
 		&project.Visibility,
-		&project.CreatedAt,
-		&project.UpdatedAt,
+		&createdAt,
+		&updatedAt,
 		&project.CreatedBy,
 		&project.UpdatedBy,
 	)
@@ -130,6 +134,8 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusInternalServerError, "failed to retrieve project")
 		return
 	}
+	project.CreatedAt = parseTimestamp(createdAt)
+	project.UpdatedAt = parseTimestamp(updatedAt)
 	if repository.Valid {
 		project.Repository = &repository.String
 	}
@@ -143,6 +149,7 @@ func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
 
 	var project db.Project
 	var repository sql.NullString
+	var createdAt, updatedAt string
 	err := s.db.Conn().QueryRow(`
 		SELECT id, name, description, repository, status, visibility, created_at, updated_at, created_by, updated_by
 		FROM projects
@@ -154,8 +161,8 @@ func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
 		&repository,
 		&project.Status,
 		&project.Visibility,
-		&project.CreatedAt,
-		&project.UpdatedAt,
+		&createdAt,
+		&updatedAt,
 		&project.CreatedBy,
 		&project.UpdatedBy,
 	)
@@ -167,6 +174,8 @@ func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusInternalServerError, "failed to query project")
 		return
 	}
+	project.CreatedAt = parseTimestamp(createdAt)
+	project.UpdatedAt = parseTimestamp(updatedAt)
 	if repository.Valid {
 		project.Repository = &repository.String
 	}
@@ -208,6 +217,7 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 
 	var project db.Project
 	var repository sql.NullString
+	var createdAt, updatedAt string
 	err = s.db.Conn().QueryRow(`
 		SELECT id, name, description, repository, status, visibility, created_at, updated_at, created_by, updated_by
 		FROM projects
@@ -219,8 +229,8 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		&repository,
 		&project.Status,
 		&project.Visibility,
-		&project.CreatedAt,
-		&project.UpdatedAt,
+		&createdAt,
+		&updatedAt,
 		&project.CreatedBy,
 		&project.UpdatedBy,
 	)
@@ -232,6 +242,8 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusInternalServerError, "failed to retrieve project")
 		return
 	}
+	project.CreatedAt = parseTimestamp(createdAt)
+	project.UpdatedAt = parseTimestamp(updatedAt)
 	if repository.Valid {
 		project.Repository = &repository.String
 	}

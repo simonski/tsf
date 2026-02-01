@@ -51,6 +51,7 @@ func (s *Server) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user db.User
+	var createdAt, updatedAt string
 	err = s.db.Conn().QueryRow(`
 		SELECT id, username, password_hash, type, is_active, created_at, updated_at
 		FROM users
@@ -61,13 +62,15 @@ func (s *Server) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 		&user.PasswordHash,
 		&user.Type,
 		&user.IsActive,
-		&user.CreatedAt,
-		&user.UpdatedAt,
+		&createdAt,
+		&updatedAt,
 	)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to retrieve user")
 		return
 	}
+	user.CreatedAt = parseTimestamp(createdAt)
+	user.UpdatedAt = parseTimestamp(updatedAt)
 
 	// Don't send password hash back
 	user.PasswordHash = ""
@@ -96,11 +99,14 @@ func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	var users []db.User
 	for rows.Next() {
 		var user db.User
-		err := rows.Scan(&user.ID, &user.Username, &user.Type, &user.IsActive, &user.CreatedAt, &user.UpdatedAt)
+		var createdAt, updatedAt string
+		err := rows.Scan(&user.ID, &user.Username, &user.Type, &user.IsActive, &createdAt, &updatedAt)
 		if err != nil {
 			sendError(w, http.StatusInternalServerError, "failed to scan user")
 			return
 		}
+		user.CreatedAt = parseTimestamp(createdAt)
+		user.UpdatedAt = parseTimestamp(updatedAt)
 		users = append(users, user)
 	}
 
@@ -112,11 +118,12 @@ func (s *Server) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("user_id")
 
 	var user db.User
+	var createdAt, updatedAt string
 	err := s.db.Conn().QueryRow(`
 		SELECT id, username, type, is_active, created_at, updated_at
 		FROM users
 		WHERE id = ?
-	`, userID).Scan(&user.ID, &user.Username, &user.Type, &user.IsActive, &user.CreatedAt, &user.UpdatedAt)
+	`, userID).Scan(&user.ID, &user.Username, &user.Type, &user.IsActive, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
 		sendError(w, http.StatusNotFound, "user not found")
 		return
@@ -125,6 +132,8 @@ func (s *Server) handleGetUser(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusInternalServerError, "failed to query user")
 		return
 	}
+	user.CreatedAt = parseTimestamp(createdAt)
+	user.UpdatedAt = parseTimestamp(updatedAt)
 
 	sendJSON(w, http.StatusOK, user)
 }

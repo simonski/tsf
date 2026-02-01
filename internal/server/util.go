@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 )
 
 // ErrorResponse represents an API error response
@@ -30,4 +31,14 @@ func sendError(w http.ResponseWriter, status int, message string) {
 // decodeJSON decodes JSON request body
 func decodeJSON(r *http.Request, v interface{}) error {
 	return json.NewDecoder(r.Body).Decode(v)
+}
+
+// parseTimestamp parses SQLite timestamp string to time.Time
+func parseTimestamp(s string) time.Time {
+	// SQLite default format
+	t, err := time.Parse("2006-01-02 15:04:05", s)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
 }

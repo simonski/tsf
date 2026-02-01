@@ -418,15 +418,19 @@ func (s *Server) handleGetTaskHistory(w http.ResponseWriter, r *http.Request) {
 	var history []db.TaskHistory
 	for rows.Next() {
 		var h db.TaskHistory
-		var completedAt sql.NullTime
+		var completedAt sql.NullString
 		var notes sql.NullString
-		err := rows.Scan(&h.ID, &h.TaskID, &h.StartedAt, &completedAt, &h.State, &h.WorkerID, &h.RoleID, &notes, &h.CreatedAt)
+		var startedAt, createdAt string
+		err := rows.Scan(&h.ID, &h.TaskID, &startedAt, &completedAt, &h.State, &h.WorkerID, &h.RoleID, &notes, &createdAt)
 		if err != nil {
 			sendError(w, http.StatusInternalServerError, "failed to scan history")
 			return
 		}
+		h.StartedAt = parseTimestamp(startedAt)
+		h.CreatedAt = parseTimestamp(createdAt)
 		if completedAt.Valid {
-			h.CompletedAt = &completedAt.Time
+			t := parseTimestamp(completedAt.String)
+			h.CompletedAt = &t
 		}
 		if notes.Valid {
 			h.Notes = &notes.String
@@ -455,9 +459,10 @@ func scanTask(scanner interface {
 }) (db.Task, error) {
 	var task db.Task
 	var acceptanceCriteria, parentID, epicID, dependsOnTaskID, workerID sql.NullString
-	var completedAt sql.NullTime
+	var completedAt sql.NullString
 	var labelsJSON sql.NullString
 	var estimatedEffort, actualEffort sql.NullInt64
+	var createdAt, updatedAt string
 
 	err := scanner.Scan(
 		&task.ID,
@@ -474,8 +479,8 @@ func scanTask(scanner interface {
 		&task.Priority,
 		&task.IsComplete,
 		&completedAt,
-		&task.CreatedAt,
-		&task.UpdatedAt,
+		&createdAt,
+		&updatedAt,
 		&task.CreatedBy,
 		&task.UpdatedBy,
 		&labelsJSON,
@@ -486,6 +491,8 @@ func scanTask(scanner interface {
 		return task, err
 	}
 
+	task.CreatedAt = parseTimestamp(createdAt)
+	task.UpdatedAt = parseTimestamp(updatedAt)
 	if acceptanceCriteria.Valid {
 		task.AcceptanceCriteria = &acceptanceCriteria.String
 	}
@@ -502,7 +509,8 @@ func scanTask(scanner interface {
 		task.WorkerID = &workerID.String
 	}
 	if completedAt.Valid {
-		task.CompletedAt = &completedAt.Time
+		t := parseTimestamp(completedAt.String)
+		task.CompletedAt = &t
 	}
 	if labelsJSON.Valid && labelsJSON.String != "" {
 		json.Unmarshal([]byte(labelsJSON.String), &task.Labels)

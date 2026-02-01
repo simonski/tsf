@@ -49,6 +49,7 @@ func (s *Server) handleListRoles(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var role db.Role
 		var projectID sql.NullString
+		var createdAt, updatedAt string
 		err := rows.Scan(
 			&role.ID,
 			&role.Name,
@@ -57,8 +58,8 @@ func (s *Server) handleListRoles(w http.ResponseWriter, r *http.Request) {
 			&role.Scope,
 			&projectID,
 			&role.IsActive,
-			&role.CreatedAt,
-			&role.UpdatedAt,
+			&createdAt,
+			&updatedAt,
 			&role.CreatedBy,
 			&role.UpdatedBy,
 		)
@@ -66,6 +67,8 @@ func (s *Server) handleListRoles(w http.ResponseWriter, r *http.Request) {
 			sendError(w, http.StatusInternalServerError, "failed to scan role")
 			return
 		}
+		role.CreatedAt = parseTimestamp(createdAt)
+		role.UpdatedAt = parseTimestamp(updatedAt)
 		if projectID.Valid {
 			role.ProjectID = &projectID.String
 		}
@@ -116,6 +119,7 @@ func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 
 	var role db.Role
 	var projectID sql.NullString
+	var createdAt, updatedAt string
 	err = s.db.Conn().QueryRow(`
 		SELECT id, name, description, rules, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
 		FROM roles
@@ -128,8 +132,8 @@ func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 		&role.Scope,
 		&projectID,
 		&role.IsActive,
-		&role.CreatedAt,
-		&role.UpdatedAt,
+		&createdAt,
+		&updatedAt,
 		&role.CreatedBy,
 		&role.UpdatedBy,
 	)
@@ -137,6 +141,8 @@ func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusInternalServerError, "failed to retrieve role")
 		return
 	}
+	role.CreatedAt = parseTimestamp(createdAt)
+	role.UpdatedAt = parseTimestamp(updatedAt)
 	if projectID.Valid {
 		role.ProjectID = &projectID.String
 	}
@@ -150,6 +156,7 @@ func (s *Server) handleGetRole(w http.ResponseWriter, r *http.Request) {
 
 	var role db.Role
 	var projectID sql.NullString
+	var createdAt, updatedAt string
 	err := s.db.Conn().QueryRow(`
 		SELECT id, name, description, rules, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
 		FROM roles
@@ -162,8 +169,8 @@ func (s *Server) handleGetRole(w http.ResponseWriter, r *http.Request) {
 		&role.Scope,
 		&projectID,
 		&role.IsActive,
-		&role.CreatedAt,
-		&role.UpdatedAt,
+		&createdAt,
+		&updatedAt,
 		&role.CreatedBy,
 		&role.UpdatedBy,
 	)
@@ -175,6 +182,8 @@ func (s *Server) handleGetRole(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusInternalServerError, "failed to query role")
 		return
 	}
+	role.CreatedAt = parseTimestamp(createdAt)
+	role.UpdatedAt = parseTimestamp(updatedAt)
 	if projectID.Valid {
 		role.ProjectID = &projectID.String
 	}
@@ -230,6 +239,7 @@ func (s *Server) handleUpdateRole(w http.ResponseWriter, r *http.Request) {
 
 	var role db.Role
 	var projectID sql.NullString
+	var createdAt, updatedAt string
 	err = s.db.Conn().QueryRow(`
 		SELECT id, name, description, rules, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
 		FROM roles
@@ -242,8 +252,8 @@ func (s *Server) handleUpdateRole(w http.ResponseWriter, r *http.Request) {
 		&role.Scope,
 		&projectID,
 		&role.IsActive,
-		&role.CreatedAt,
-		&role.UpdatedAt,
+		&createdAt,
+		&updatedAt,
 		&role.CreatedBy,
 		&role.UpdatedBy,
 	)
@@ -251,6 +261,8 @@ func (s *Server) handleUpdateRole(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusInternalServerError, "failed to retrieve role")
 		return
 	}
+	role.CreatedAt = parseTimestamp(createdAt)
+	role.UpdatedAt = parseTimestamp(updatedAt)
 	if projectID.Valid {
 		role.ProjectID = &projectID.String
 	}

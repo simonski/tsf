@@ -2,9 +2,9 @@ package server
 
 import (
 	"embed"
-	"io"
+	"io/fs"
+	"log"
 	"net/http"
-	"time"
 
 	"github.com/simonski/task/internal/db"
 )
@@ -82,26 +82,55 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("PUT /api/v1/config/{key}", s.withAuth(s.withAdmin(s.handleSetConfig)))
 	mux.HandleFunc("DELETE /api/v1/config/{key}", s.withAuth(s.withAdmin(s.handleDeleteConfig)))
 
-	// Static file serving
-	if s.webFS != (embed.FS{}) {
-		// Serve static files
+	// Static file serving - always register these routes
+	// Check if webFS has content by trying to read directory
+	entries, err := fs.ReadDir(s.webFS, ".")
+	hasWebFS := err == nil && len(entries) > 0
+	log.Printf("WebFS has content: %v (entries: %d, err: %v)", hasWebFS, len(entries), err)
+
+	if hasWebFS {
+		// Serve static files and root from embedded FS
 		fileServer := http.FileServer(http.FS(s.webFS))
 		mux.Handle("GET /static/", fileServer)
 
-		// Serve index.html for root
+		// Serve index.html for root and SPA routes
 		mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path != "/" {
-				// For unknown paths, serve index.html (SPA routing)
-				indexFile, err := s.webFS.Open("index.html")
+			// For root and non-API paths, serve index.html
+			if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+				data, err := fs.ReadFile(s.webFS, "index.html")
 				if err != nil {
-					http.NotFound(w, r)
+					log.Printf("Error reading index.html: %v", err)
+					http.Error(w, "Not Found", http.StatusNotFound)
 					return
 				}
-				defer indexFile.Close()
-				http.ServeContent(w, r, "index.html", time.Time{}, indexFile.(io.ReadSeeker))
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.Write(data)
+				return
+			}
+			// For other paths, try to serve static file or fall back to index.html (SPA)
+			_, err := fs.Stat(s.webFS, r.URL.Path[1:]) // Remove leading /
+			if err != nil {
+				// File not found, serve index.html for SPA routing
+				data, err := fs.ReadFile(s.webFS, "index.html")
+				if err != nil {
+					http.Error(w, "Not Found", http.StatusNotFound)
+					return
+				}
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.Write(data)
 				return
 			}
 			fileServer.ServeHTTP(w, r)
+		})
+	} else {
+		// No web content, serve simple message at root
+		mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/" {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write([]byte("Task Management Server - API available at /api/v1/"))
 		})
 	}
 

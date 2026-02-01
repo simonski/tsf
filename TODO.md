@@ -1,9 +1,5 @@
 # TODO
 
-- implement and verify the -url option in the CLI calls, the -json option too
-- implement 100% of the CLI methods
-- BUG: the server renders a 404 when going to http://localhost:8080, not a webpagewith landing, login, register as it should
-
 ## Completed Improvements
 
 - [x] `task` should render the whole usage
@@ -15,6 +11,9 @@
     - `task (client)` - CLI commands (scaffolded)
     - `task initdb` - Initialize database
     - `task worker` - Start worker daemon
+- [x] implement and verify the -url option in the CLI calls, the -json option too
+- [x] implement 100% of the CLI methods
+- [x] BUG FIX: the server now correctly renders the web UI at http://localhost:8080
 
 ## Next Priority Tasks
 

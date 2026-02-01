@@ -49,8 +49,9 @@ func (s *Server) withAuth(next http.HandlerFunc) http.HandlerFunc {
 		username := parts[0]
 		password := parts[1]
 
-		// Query user from database
+		// Query user from database - use strings for timestamps due to SQLite
 		var user db.User
+		var createdAt, updatedAt string
 		err = s.db.Conn().QueryRow(`
 			SELECT id, username, password_hash, type, is_active, created_at, updated_at
 			FROM users
@@ -61,8 +62,8 @@ func (s *Server) withAuth(next http.HandlerFunc) http.HandlerFunc {
 			&user.PasswordHash,
 			&user.Type,
 			&user.IsActive,
-			&user.CreatedAt,
-			&user.UpdatedAt,
+			&createdAt,
+			&updatedAt,
 		)
 		if err != nil {
 			sendError(w, http.StatusUnauthorized, "invalid credentials")

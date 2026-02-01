@@ -30,11 +30,14 @@ func (s *Server) handleListConfig(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var cfg db.Config
 		var description sql.NullString
-		err := rows.Scan(&cfg.Key, &cfg.Value, &description, &cfg.CreatedAt, &cfg.UpdatedAt)
+		var createdAt, updatedAt string
+		err := rows.Scan(&cfg.Key, &cfg.Value, &description, &createdAt, &updatedAt)
 		if err != nil {
 			sendError(w, http.StatusInternalServerError, "failed to scan config")
 			return
 		}
+		cfg.CreatedAt = parseTimestamp(createdAt)
+		cfg.UpdatedAt = parseTimestamp(updatedAt)
 		if description.Valid {
 			cfg.Description = &description.String
 		}
@@ -50,11 +53,12 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 
 	var cfg db.Config
 	var description sql.NullString
+	var createdAt, updatedAt string
 	err := s.db.Conn().QueryRow(`
 		SELECT key, value, description, created_at, updated_at
 		FROM config
 		WHERE key = ?
-	`, key).Scan(&cfg.Key, &cfg.Value, &description, &cfg.CreatedAt, &cfg.UpdatedAt)
+	`, key).Scan(&cfg.Key, &cfg.Value, &description, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
 		sendError(w, http.StatusNotFound, "config key not found")
 		return
@@ -63,6 +67,8 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusInternalServerError, "failed to query config")
 		return
 	}
+	cfg.CreatedAt = parseTimestamp(createdAt)
+	cfg.UpdatedAt = parseTimestamp(updatedAt)
 	if description.Valid {
 		cfg.Description = &description.String
 	}
@@ -98,15 +104,18 @@ func (s *Server) handleSetConfig(w http.ResponseWriter, r *http.Request) {
 
 	var cfg db.Config
 	var description sql.NullString
+	var createdAt, updatedAt string
 	err = s.db.Conn().QueryRow(`
 		SELECT key, value, description, created_at, updated_at
 		FROM config
 		WHERE key = ?
-	`, key).Scan(&cfg.Key, &cfg.Value, &description, &cfg.CreatedAt, &cfg.UpdatedAt)
+	`, key).Scan(&cfg.Key, &cfg.Value, &description, &createdAt, &updatedAt)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to retrieve config")
 		return
 	}
+	cfg.CreatedAt = parseTimestamp(createdAt)
+	cfg.UpdatedAt = parseTimestamp(updatedAt)
 	if description.Valid {
 		cfg.Description = &description.String
 	}
