@@ -60,28 +60,28 @@ func VerifyPassword(password, encodedHash string) (bool, error) {
 	if current != "" {
 		parts = append(parts, current)
 	}
-	
+
 	if len(parts) != 5 {
 		return false, fmt.Errorf("invalid hash format: expected 5 parts, got %d", len(parts))
 	}
-	
+
 	if parts[0] != "argon2id" {
 		return false, fmt.Errorf("unsupported hash algorithm: %s", parts[0])
 	}
-	
+
 	// Parse version
 	var version int
 	if _, err := fmt.Sscanf(parts[1], "v=%d", &version); err != nil {
 		return false, fmt.Errorf("failed to parse version: %w", err)
 	}
-	
+
 	// Parse parameters
 	var memory, iterations uint32
 	var parallelism uint8
 	if _, err := fmt.Sscanf(parts[2], "m=%d,t=%d,p=%d", &memory, &iterations, &parallelism); err != nil {
 		return false, fmt.Errorf("failed to parse parameters: %w", err)
 	}
-	
+
 	saltB64 := parts[3]
 	hashB64 := parts[4]
 
