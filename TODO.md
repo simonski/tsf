@@ -3,6 +3,12 @@
 - `task` should render the whole usage
 - `make build` should build the binary to ./, not ./bin
 - `make` should print all make targets
+- merge all binaries to be a SINGLE binary `task` with commands the run them
+    task server
+    task orchestrator
+    task (client)
+    task initdb
+    task worker
 
 ## Next Priority Tasks
 
