@@ -87,7 +87,7 @@ func (s *Server) Router() http.Handler {
 		// Serve static files
 		fileServer := http.FileServer(http.FS(s.webFS))
 		mux.Handle("GET /static/", fileServer)
-		
+
 		// Serve index.html for root
 		mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path != "/" {

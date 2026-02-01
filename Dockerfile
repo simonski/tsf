@@ -9,10 +9,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=1 GOOS=linux go build -o /task-server ./cmd/server
-RUN CGO_ENABLED=1 GOOS=linux go build -o /task-initdb ./cmd/initdb
-RUN CGO_ENABLED=1 GOOS=linux go build -o /task-orchestrator ./cmd/orchestrator
-RUN CGO_ENABLED=1 GOOS=linux go build -o /task-worker ./cmd/worker
+RUN CGO_ENABLED=1 GOOS=linux go build -o /task ./cmd/task-unified
 
 FROM alpine:latest
 
@@ -20,11 +17,8 @@ RUN apk --no-cache add ca-certificates sqlite
 
 WORKDIR /app
 
-COPY --from=builder /task-server /app/
-COPY --from=builder /task-initdb /app/
-COPY --from=builder /task-orchestrator /app/
-COPY --from=builder /task-worker /app/
+COPY --from=builder /task /app/
 
 EXPOSE 8080
 
-CMD ["/app/task-server"]
+CMD ["/app/task", "server"]

@@ -7,7 +7,7 @@ services:
       - ./data:/data
     environment:
       - TASK_DB_PATH=/data/task.db
-    command: /app/task-initdb -f /data/task.db
+    command: /app/task initdb -f /data/task.db
     restart: "no"
 
   server:
@@ -18,7 +18,7 @@ services:
       - ./data:/data
     environment:
       - TASK_DB_PATH=/data/task.db
-    command: /app/task-server -f /data/task.db -port 8080
+    command: /app/task server -f /data/task.db -port 8080
     depends_on:
       - initdb
     restart: unless-stopped
@@ -29,7 +29,7 @@ services:
       - TASK_URL=http://server:8080
       - TASK_USERNAME=orchestrator
       - TASK_PASSWORD=${ORCHESTRATOR_PASSWORD}
-    command: /app/task-orchestrator -url http://server:8080
+    command: /app/task orchestrator -url http://server:8080
     depends_on:
       - server
     restart: unless-stopped
