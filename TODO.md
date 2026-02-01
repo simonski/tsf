@@ -1,5 +1,9 @@
 # TODO
 
+- `task` should render the whole usage
+- `make build` should build the binary to ./, not ./bin
+- `make` shoudl print all make targets
+
 ## Next Priority Tasks
 
 ### 1. Database Schema & Initialization [COMPLETED]

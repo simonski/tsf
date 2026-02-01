@@ -1,4 +1,4 @@
-.PHONY: help build clean test test-go test-go-unit test-go-coverage initdb server cli
+.PHONY: help build clean test test-go test-go-unit test-go-coverage initdb server cli orchestrator worker
 
 help:
 	@echo "Task Management System - Makefile"
@@ -13,9 +13,11 @@ help:
 	@echo "  initdb            - Build initdb command"
 	@echo "  server            - Build server binary"
 	@echo "  cli               - Build CLI client"
+	@echo "  orchestrator      - Build orchestrator daemon"
+	@echo "  worker            - Build worker daemon"
 	@echo ""
 
-build: initdb server cli
+build: initdb server cli orchestrator worker
 
 initdb:
 	@echo "Building initdb..."
@@ -28,6 +30,14 @@ server:
 cli:
 	@echo "Building CLI..."
 	@go build -o bin/task ./cmd/task
+
+orchestrator:
+	@echo "Building orchestrator..."
+	@go build -o bin/task-orchestrator ./cmd/orchestrator
+
+worker:
+	@echo "Building worker..."
+	@go build -o bin/task-worker ./cmd/worker
 
 clean:
 	@echo "Cleaning build artifacts..."
