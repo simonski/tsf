@@ -2,7 +2,7 @@
 
 - `task` should render the whole usage
 - `make build` should build the binary to ./, not ./bin
-- `make` shoudl print all make targets
+- `make` should print all make targets
 
 ## Next Priority Tasks
 
