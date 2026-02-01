@@ -1,4 +1,4 @@
-.PHONY: help build clean test test-go test-go-unit test-go-coverage initdb server
+.PHONY: help build clean test test-go test-go-unit test-go-coverage initdb server cli
 
 help:
 	@echo "Task Management System - Makefile"
@@ -12,9 +12,10 @@ help:
 	@echo "  test-go-coverage  - Run Go tests with coverage report"
 	@echo "  initdb            - Build initdb command"
 	@echo "  server            - Build server binary"
+	@echo "  cli               - Build CLI client"
 	@echo ""
 
-build: initdb server
+build: initdb server cli
 
 initdb:
 	@echo "Building initdb..."
@@ -23,6 +24,10 @@ initdb:
 server:
 	@echo "Building server..."
 	@go build -o bin/task-server ./cmd/server
+
+cli:
+	@echo "Building CLI..."
+	@go build -o bin/task ./cmd/task
 
 clean:
 	@echo "Cleaning build artifacts..."
