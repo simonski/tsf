@@ -1,52 +1,32 @@
-.PHONY: help build clean test test-go test-go-unit test-go-coverage initdb server cli orchestrator worker docker docker-up docker-down run-local
+.PHONY: help build clean test test-go test-go-unit test-go-coverage task docker docker-up docker-down run-local
 
 help:
 	@echo "Task Management System - Makefile"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  build             - Build all binaries"
+	@echo "  build             - Build unified task binary"
 	@echo "  clean             - Remove build artifacts"
 	@echo "  test              - Run all tests"
 	@echo "  test-go           - Run all Go tests"
 	@echo "  test-go-unit      - Run Go unit tests only"
 	@echo "  test-go-coverage  - Run Go tests with coverage report"
-	@echo "  initdb            - Build initdb command"
-	@echo "  server            - Build server binary"
-	@echo "  cli               - Build CLI client"
-	@echo "  orchestrator      - Build orchestrator daemon"
-	@echo "  worker            - Build worker daemon"
+	@echo "  task              - Build unified task binary"
 	@echo "  docker            - Build Docker image"
 	@echo "  docker-up         - Start all services with Docker Compose"
 	@echo "  docker-down       - Stop all Docker services"
 	@echo "  run-local         - Run server and orchestrator locally"
 	@echo ""
 
-build: initdb server cli orchestrator worker
+build: task
 
-initdb:
-	@echo "Building initdb..."
-	@go build -o bin/task-initdb ./cmd/initdb
-
-server:
-	@echo "Building server..."
-	@go build -o bin/task-server ./cmd/server
-
-cli:
-	@echo "Building CLI..."
-	@go build -o bin/task ./cmd/task
-
-orchestrator:
-	@echo "Building orchestrator..."
-	@go build -o bin/task-orchestrator ./cmd/orchestrator
-
-worker:
-	@echo "Building worker..."
-	@go build -o bin/task-worker ./cmd/worker
+task:
+	@echo "Building unified task binary..."
+	@go build -o task ./cmd/task-unified
 
 clean:
 	@echo "Cleaning build artifacts..."
-	@rm -rf bin/
-	@rm -f coverage.out
+	@rm -f task
+	@rm -f coverage.out coverage.html
 
 test: test-go
 
@@ -81,6 +61,6 @@ docker-down:
 run-local: build
 	@echo "Initializing database..."
 	@mkdir -p ~/.config/task
-	@./bin/task-initdb -f ~/.config/task/task.db || true
+	@./task initdb -f ~/.config/task/task.db || true
 	@echo "Starting server on port 8080..."
-	@./bin/task-server -f ~/.config/task/task.db -port 8080
+	@./task server -f ~/.config/task/task.db -port 8080
