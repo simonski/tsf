@@ -2,29 +2,29 @@
 
 ## Next Priority Tasks
 
-### 1. Database Schema & Initialization [feature/database-schema]
-- [ ] Create SQL schema file with all tables (users, projects, roles, tasks, task_history, project_members, config)
-- [ ] Implement Go database package with models and connection management
-- [ ] Implement CLI initdb command
-- [ ] Add unit tests for database initialization
-- [ ] Verify all entity definitions match ENTITY_*.md specifications
+### 1. Database Schema & Initialization [COMPLETED]
+- [x] Create SQL schema file with all tables (users, projects, roles, tasks, task_history, project_members, config)
+- [x] Implement Go database package with models and connection management
+- [x] Implement CLI initdb command
+- [x] Add unit tests for database initialization
+- [x] Verify all entity definitions match ENTITY_*.md specifications
 
-### 2. OpenAPI Specification [feature/api-specification]
-- [ ] Create /api-specification.yaml with OpenAPI 3.0 spec
-- [ ] Document all authentication requirements (Basic Auth)
-- [ ] Document all CRUD endpoints for users, projects, roles, tasks
-- [ ] Document config management endpoints
-- [ ] Document worker/orchestrator registration and heartbeat endpoints
+### 2. OpenAPI Specification [COMPLETED]
+- [x] Create /api-specification.yaml with OpenAPI 3.0 spec
+- [x] Document all authentication requirements (Basic Auth)
+- [x] Document all CRUD endpoints for users, projects, roles, tasks
+- [x] Document config management endpoints
+- [x] Document worker/orchestrator registration and heartbeat endpoints
 
-### 3. Go Server Backend [feature/server-backend]
-- [ ] Create HTTP server with routing
-- [ ] Implement Basic Auth middleware
-- [ ] Implement all CRUD handlers matching OpenAPI spec
-- [ ] Add database interaction layer
-- [ ] Add request validation and error handling
-- [ ] Write unit tests for all handlers
-- [ ] Write integration tests
-- [ ] Verify all tests pass with `make test-go`
+### 3. Go Server Backend [COMPLETED]
+- [x] Create HTTP server with routing
+- [x] Implement Basic Auth middleware
+- [x] Implement all CRUD handlers matching OpenAPI spec
+- [x] Add database interaction layer
+- [x] Add request validation and error handling
+- [x] Write unit tests for all handlers
+- [x] Write integration tests
+- [x] Verify all tests pass with `make test-go`
 
 ### 4. CLI Client [feature/cli-client]
 - [ ] Implement all commands from DESIGN_CLI.md
