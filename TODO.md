@@ -1,5 +1,9 @@
 # TODO
 
+- implement and verify the -url option in the CLI calls, the -json option too
+- implement 100% of the CLI methods
+- BUG: the server renders a 404 when going to http://localhost:8080, not a webpagewith landing, login, register as it should
+
 ## Completed Improvements
 
 - [x] `task` should render the whole usage
