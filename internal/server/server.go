@@ -6,25 +6,53 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/simonski/task/internal/db"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	db    *db.DB
-	webFS embed.FS
+	db       *db.DB
+	webFS    embed.FS
+	webAuthn *webauthn.WebAuthn
 }
 
 // New creates a new server instance
 func New(database *db.DB) *Server {
+	// Initialize WebAuthn
+	wconfig := &webauthn.Config{
+		RPDisplayName: "Task Management System",
+		RPID:          "localhost",
+		RPOrigins:     []string{"http://localhost:8080", "https://localhost:8080"},
+	}
+	
+	webAuthn, err := webauthn.New(wconfig)
+	if err != nil {
+		log.Printf("Failed to initialize WebAuthn: %v", err)
+	}
+
 	return &Server{
-		db: database,
+		db:       database,
+		webAuthn: webAuthn,
 	}
 }
 
 // SetWebFS sets the embedded web filesystem
 func (s *Server) SetWebFS(webFS embed.FS) {
 	s.webFS = webFS
+}
+
+// SetWebAuthnConfig updates WebAuthn configuration with custom values
+func (s *Server) SetWebAuthnConfig(rpID string, rpOrigins []string) error {
+	wconfig := &webauthn.Config{
+		RPDisplayName: "Task Management System",
+		RPID:          rpID,
+		RPOrigins:     rpOrigins,
+	}
+	
+	var err error
+	s.webAuthn, err = webauthn.New(wconfig)
+	return err
 }
 
 // Router returns the HTTP router
@@ -44,6 +72,14 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/refresh", s.handleRefresh)
 	mux.HandleFunc("POST /api/v1/auth/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/v1/auth/me", s.withAuth(s.handleMe))
+
+	// Passkey authentication endpoints
+	mux.HandleFunc("POST /api/v1/auth/passkey/register/begin", s.withAuth(s.handlePasskeyRegisterBegin))
+	mux.HandleFunc("POST /api/v1/auth/passkey/register/finish", s.withAuth(s.handlePasskeyRegisterFinish))
+	mux.HandleFunc("POST /api/v1/auth/passkey/authenticate/begin", s.handlePasskeyAuthBegin)
+	mux.HandleFunc("POST /api/v1/auth/passkey/authenticate/finish", s.handlePasskeyAuthFinish)
+	mux.HandleFunc("GET /api/v1/auth/passkey/list", s.withAuth(s.handlePasskeyList))
+	mux.HandleFunc("DELETE /api/v1/auth/passkey", s.withAuth(s.handlePasskeyDelete))
 
 	// User endpoints
 	mux.HandleFunc("GET /api/v1/users", s.withAuth(s.handleListUsers))

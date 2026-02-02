@@ -97,6 +97,41 @@ After logging in:
 1. Use the project dropdown in the header to select a project
 2. The kanban board will load tasks for the selected project
 
+### Passkey Authentication (Passwordless Login)
+
+The Task Management System supports passkey authentication, providing a more secure and convenient login experience using your device's biometric sensors (fingerprint, face recognition) or hardware security keys.
+
+#### Registering a Passkey
+
+1. Log in with your username and password
+2. Click the hamburger menu (☰) and select "Settings"
+3. Click "Add New Passkey"
+4. Enter an optional name for your passkey (e.g., "My Laptop", "iPhone")
+5. Follow your browser's prompts to create the passkey using:
+   - Fingerprint sensor
+   - Face recognition
+   - Device PIN
+   - Hardware security key (YubiKey, etc.)
+
+Your passkey is now registered and can be used for future logins.
+
+#### Signing in with a Passkey
+
+1. On the login page, click "Sign in with Passkey"
+2. Optionally enter your username (or leave blank for discoverable credentials)
+3. Follow your browser's prompts to authenticate using your passkey
+
+No password needed!
+
+#### Managing Passkeys
+
+In the Settings screen, you can:
+- View all registered passkeys
+- See when each passkey was created and last used
+- Delete passkeys you no longer use
+
+**Note:** Passkeys are tied to your device and browser. Register multiple passkeys if you access the system from different devices.
+
 ### Kanban Board
 
 The board displays four columns:
