@@ -284,6 +284,180 @@ async function initOverviewVisualization() {
     });
 }
 
+// Passkey Authentication
+function bufferToBase64url(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let str = '';
+    for (const byte of bytes) {
+        str += String.fromCharCode(byte);
+    }
+    return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function base64urlToBuffer(base64url) {
+    const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
+}
+
+async function registerPasskey(deviceName = null) {
+    try {
+        // Check WebAuthn support
+        if (!window.PublicKeyCredential) {
+            throw new Error('Passkeys are not supported on this device');
+        }
+
+        // Begin registration
+        const beginResponse = await apiRequest('/auth/passkey/register/begin', {
+            method: 'POST',
+            body: JSON.stringify({
+                username: state.currentUser.username
+            })
+        });
+
+        // Convert challenge and user ID from base64url
+        const publicKey = beginResponse.options.publicKey;
+        publicKey.challenge = base64urlToBuffer(publicKey.challenge);
+        publicKey.user.id = base64urlToBuffer(publicKey.user.id);
+
+        // Create credential
+        const credential = await navigator.credentials.create({ publicKey });
+
+        // Finish registration
+        await apiRequest('/auth/passkey/register/finish', {
+            method: 'POST',
+            body: JSON.stringify({
+                session_id: beginResponse.session_id,
+                credential: {
+                    id: credential.id,
+                    rawId: bufferToBase64url(credential.rawId),
+                    type: credential.type,
+                    response: {
+                        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+                        attestationObject: bufferToBase64url(credential.response.attestationObject)
+                    }
+                },
+                device_name: deviceName || `Device ${new Date().toLocaleDateString()}`
+            })
+        });
+
+        return true;
+    } catch (error) {
+        console.error('Passkey registration error:', error);
+        throw error;
+    }
+}
+
+async function authenticateWithPasskey(username = null) {
+    try {
+        // Check WebAuthn support
+        if (!window.PublicKeyCredential) {
+            throw new Error('Passkeys are not supported on this device');
+        }
+
+        // Begin authentication
+        const beginResponse = await apiRequest('/auth/passkey/authenticate/begin', {
+            method: 'POST',
+            body: JSON.stringify({ username })
+        });
+
+        // Convert challenge from base64url
+        const publicKey = beginResponse.options.publicKey;
+        publicKey.challenge = base64urlToBuffer(publicKey.challenge);
+        if (publicKey.allowCredentials) {
+            publicKey.allowCredentials = publicKey.allowCredentials.map(cred => ({
+                ...cred,
+                id: base64urlToBuffer(cred.id)
+            }));
+        }
+
+        // Get credential
+        const credential = await navigator.credentials.get({ publicKey });
+
+        // Finish authentication
+        const loginResponse = await apiRequest('/auth/passkey/authenticate/finish', {
+            method: 'POST',
+            body: JSON.stringify({
+                session_id: beginResponse.session_id,
+                credential: {
+                    id: credential.id,
+                    rawId: bufferToBase64url(credential.rawId),
+                    type: credential.type,
+                    response: {
+                        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+                        authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+                        signature: bufferToBase64url(credential.response.signature),
+                        userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : null
+                    }
+                }
+            })
+        });
+
+        // Store token and user info
+        state.currentUser = loginResponse.user;
+        localStorage.setItem('authToken', loginResponse.token);
+        await loadProjects();
+        showScreen('board-screen');
+        return true;
+    } catch (error) {
+        console.error('Passkey authentication error:', error);
+        throw error;
+    }
+}
+
+async function loadPasskeys() {
+    try {
+        const passkeys = await apiRequest('/auth/passkey/list');
+        const container = document.getElementById('passkey-list');
+        
+        if (!passkeys || passkeys.length === 0) {
+            container.innerHTML = '<div class="passkey-empty">No passkeys registered</div>';
+            return;
+        }
+
+        container.innerHTML = passkeys.map(pk => `
+            <div class="passkey-item">
+                <div class="passkey-info">
+                    <div class="passkey-name">${pk.device_name || 'Unnamed Device'}</div>
+                    <div class="passkey-meta">
+                        Created: ${new Date(pk.created_at).toLocaleDateString()}
+                        ${pk.last_used_at ? `• Last used: ${new Date(pk.last_used_at).toLocaleDateString()}` : ''}
+                    </div>
+                </div>
+                <div class="passkey-actions">
+                    <button onclick="deletePasskey('${pk.id}')">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        showError('passkey-error', error.message);
+    }
+}
+
+async function deletePasskey(passkeyId) {
+    if (!confirm('Are you sure you want to delete this passkey?')) {
+        return;
+    }
+
+    try {
+        await apiRequest(`/auth/passkey?id=${passkeyId}`, {
+            method: 'DELETE'
+        });
+        await loadPasskeys();
+    } catch (error) {
+        showError('passkey-error', error.message);
+    }
+}
+
+function showSettings() {
+    showScreen('settings-screen');
+    loadPasskeys();
+}
+
 // Projects
 async function loadProjects() {
     try {
@@ -482,6 +656,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // Passkey Login
+    document.getElementById('passkey-login-button').addEventListener('click', async () => {
+        try {
+            const username = document.getElementById('login-username').value.trim();
+            await authenticateWithPasskey(username || null);
+            hideError('auth-error');
+        } catch (error) {
+            showError('auth-error', error.message);
+        }
+    });
+    
     // Register
     document.getElementById('register-button').addEventListener('click', async () => {
         const username = document.getElementById('register-username').value.trim();
@@ -575,7 +760,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('nav-settings').addEventListener('click', (e) => {
         e.preventDefault();
         closeNav();
-        alert('Settings coming soon!');
+        showSettings();
     });
     
     document.getElementById('nav-logout').addEventListener('click', (e) => {
@@ -594,6 +779,33 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (overviewLogoutButton) {
         overviewLogoutButton.addEventListener('click', logout);
+    }
+    
+    // Settings Screen
+    const settingsMenuToggle = document.getElementById('settings-menu-toggle');
+    const settingsLogoutButton = document.getElementById('settings-logout-button');
+    const registerPasskeyButton = document.getElementById('register-passkey-button');
+    
+    if (settingsMenuToggle) {
+        settingsMenuToggle.addEventListener('click', openNav);
+    }
+    
+    if (settingsLogoutButton) {
+        settingsLogoutButton.addEventListener('click', logout);
+    }
+    
+    if (registerPasskeyButton) {
+        registerPasskeyButton.addEventListener('click', async () => {
+            const deviceName = prompt('Enter a name for this passkey (optional):');
+            try {
+                await registerPasskey(deviceName);
+                alert('Passkey registered successfully!');
+                await loadPasskeys();
+                hideError('passkey-error');
+            } catch (error) {
+                showError('passkey-error', error.message);
+            }
+        });
     }
     
     // Auto-login from localStorage

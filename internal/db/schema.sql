@@ -184,6 +184,45 @@ CREATE UNIQUE INDEX idx_heartbeats_user ON heartbeats(user_id);
 CREATE INDEX idx_heartbeats_last_seen ON heartbeats(last_seen);
 CREATE INDEX idx_heartbeats_status ON heartbeats(status);
 
+-- Passkey credentials table: store WebAuthn credentials
+CREATE TABLE IF NOT EXISTS passkey_credentials (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    credential_id BLOB NOT NULL UNIQUE,
+    public_key BLOB NOT NULL,
+    attestation_type TEXT NOT NULL,
+    aaguid BLOB NOT NULL,
+    sign_count INTEGER NOT NULL DEFAULT 0,
+    clone_warning INTEGER NOT NULL DEFAULT 0,
+    transports TEXT, -- JSON array of transport types
+    backup_eligible INTEGER NOT NULL DEFAULT 0,
+    backup_state INTEGER NOT NULL DEFAULT 0,
+    device_name TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    last_used_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_passkey_credentials_user ON passkey_credentials(user_id);
+CREATE INDEX idx_passkey_credentials_credential_id ON passkey_credentials(credential_id);
+CREATE INDEX idx_passkey_credentials_last_used ON passkey_credentials(last_used_at);
+
+-- WebAuthn sessions table: store temporary session data during registration/authentication
+CREATE TABLE IF NOT EXISTS webauthn_sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    challenge BLOB NOT NULL,
+    user_verification TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    session_type TEXT NOT NULL CHECK(session_type IN ('registration', 'authentication')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_webauthn_sessions_user ON webauthn_sessions(user_id);
+CREATE INDEX idx_webauthn_sessions_expires ON webauthn_sessions(expires_at);
+CREATE INDEX idx_webauthn_sessions_challenge ON webauthn_sessions(challenge);
+
 -- Trigger to update updated_at timestamp
 CREATE TRIGGER IF NOT EXISTS update_users_timestamp 
     AFTER UPDATE ON users

@@ -1,9 +1,17 @@
 # TODO
 
-- add passkey authentication
+- investigate playwright integration testing for frontend
 
 ## Recent Improvements (Feb 2026)
 
+- [x] Fixed passkey credential verification bug (challenge storage and retrieval)
+- [x] Implemented passkey (WebAuthn) authentication for passwordless login
+- [x] Added database schema for passkey credentials and sessions
+- [x] Created passkey registration and authentication endpoints
+- [x] Updated frontend with passkey support in login and settings screens
+- [x] Added comprehensive tests for passkey functionality
+- [x] Updated API specification with passkey endpoints
+- [x] Updated documentation with passkey usage instructions
 - [x] Verified argon2id is already implemented for secure password hashing (not bcrypt)
 - [x] Added .env.example file for easier environment setup
 - [x] Enhanced .gitignore with additional common patterns

@@ -361,6 +361,222 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
                 
+  /auth/passkey/register/begin:
+    post:
+      summary: Begin passkey registration
+      description: Start the passkey registration process for the authenticated user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+              required:
+                - username
+      responses:
+        '200':
+          description: WebAuthn registration options
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                  options:
+                    type: object
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /auth/passkey/register/finish:
+    post:
+      summary: Complete passkey registration
+      description: Finish the passkey registration process
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+                credential:
+                  type: object
+                device_name:
+                  type: string
+              required:
+                - session_id
+                - credential
+      responses:
+        '200':
+          description: Passkey registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+        '400':
+          description: Invalid credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /auth/passkey/authenticate/begin:
+    post:
+      summary: Begin passkey authentication
+      description: Start the passkey authentication process
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+      responses:
+        '200':
+          description: WebAuthn authentication options
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                  options:
+                    type: object
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /auth/passkey/authenticate/finish:
+    post:
+      summary: Complete passkey authentication
+      description: Finish the passkey authentication process and receive authentication tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+                credential:
+                  type: object
+              required:
+                - session_id
+                - credential
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                  user:
+                    type: object
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /auth/passkey/list:
+    get:
+      summary: List user's passkeys
+      description: Get all registered passkeys for the authenticated user
+      responses:
+        '200':
+          description: List of passkeys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    credential_id:
+                      type: string
+                    attestation_type:
+                      type: string
+                    device_name:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+                    last_used_at:
+                      type: string
+                      format: date-time
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /auth/passkey:
+    delete:
+      summary: Delete a passkey
+      description: Remove a registered passkey for the authenticated user
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Passkey deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Passkey not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
   /users:
     get:
       summary: List all users

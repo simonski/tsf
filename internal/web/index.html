@@ -39,6 +39,8 @@
                     <input type="text" id="login-username" placeholder="Username" autocomplete="username">
                     <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
                     <button id="login-button" class="primary-button">Login</button>
+                    <div class="auth-divider">or</div>
+                    <button id="passkey-login-button" class="secondary-button">Sign in with Passkey</button>
                 </div>
                 
                 <div id="register-form" class="auth-form hidden">
@@ -167,6 +169,31 @@
                 <div class="overview-info">
                     <h3>System Information</h3>
                     <div id="system-stats"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="screen hidden">
+            <header class="app-header">
+                <button id="settings-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>Settings</h1>
+                <div class="header-controls">
+                    <button id="settings-logout-button" class="secondary-button">Logout</button>
+                </div>
+            </header>
+            
+            <div class="settings-container">
+                <div class="settings-section">
+                    <h2>Passkey Management</h2>
+                    <p class="settings-description">Passkeys provide passwordless authentication using your device's biometric sensors or security keys.</p>
+                    <button id="register-passkey-button" class="primary-button">Add New Passkey</button>
+                    <div id="passkey-list" class="passkey-list"></div>
+                    <div id="passkey-error" class="error-message hidden"></div>
                 </div>
             </div>
         </div>

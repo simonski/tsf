@@ -108,3 +108,32 @@ type Heartbeat struct {
 	LastSeen  time.Time `json:"last_seen"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+// PasskeyCredential represents a WebAuthn credential
+type PasskeyCredential struct {
+	ID              string     `json:"id"`
+	UserID          string     `json:"user_id"`
+	CredentialID    []byte     `json:"credential_id"`
+	PublicKey       []byte     `json:"public_key"`
+	AttestationType string     `json:"attestation_type"`
+	AAGUID          []byte     `json:"aaguid"`
+	SignCount       uint32     `json:"sign_count"`
+	CloneWarning    bool       `json:"clone_warning"`
+	Transports      []string   `json:"transports,omitempty"`
+	BackupEligible  bool       `json:"backup_eligible"`
+	BackupState     bool       `json:"backup_state"`
+	DeviceName      *string    `json:"device_name,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	LastUsedAt      *time.Time `json:"last_used_at,omitempty"`
+}
+
+// WebAuthnSession represents a temporary session during passkey registration/authentication
+type WebAuthnSession struct {
+	ID               string    `json:"id"`
+	UserID           *string   `json:"user_id,omitempty"`
+	Challenge        []byte    `json:"challenge"`
+	UserVerification string    `json:"user_verification"`
+	ExpiresAt        time.Time `json:"expires_at"`
+	SessionType      string    `json:"session_type"` // registration, authentication
+	CreatedAt        time.Time `json:"created_at"`
+}
