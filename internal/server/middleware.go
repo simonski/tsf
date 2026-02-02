@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -45,6 +46,12 @@ func (s *Server) withAuth(next http.HandlerFunc) http.HandlerFunc {
 			}
 		} else {
 			sendError(w, http.StatusUnauthorized, "invalid authorization scheme")
+			return
+		}
+
+		// Ensure user was successfully authenticated
+		if user == nil {
+			sendError(w, http.StatusUnauthorized, "authentication failed")
 			return
 		}
 
@@ -102,7 +109,7 @@ func (s *Server) authenticateBasic(encoded string) (*db.User, error) {
 	credentials := string(payload)
 	parts := strings.SplitN(credentials, ":", 2)
 	if len(parts) != 2 {
-		return nil, err
+		return nil, errors.New("invalid credentials format")
 	}
 
 	username := parts[0]

@@ -4,3 +4,5 @@ coverage.html
 *.db
 .DS_Store
 .config/
+task
+task.db
