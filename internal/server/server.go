@@ -95,7 +95,6 @@ func (s *Server) Router() http.Handler {
 	// Check if webFS has content by trying to read directory
 	entries, err := fs.ReadDir(s.webFS, ".")
 	hasWebFS := err == nil && len(entries) > 0
-	log.Printf("WebFS has content: %v (entries: %d, err: %v)", hasWebFS, len(entries), err)
 
 	if hasWebFS {
 		// Serve static files and root from embedded FS
