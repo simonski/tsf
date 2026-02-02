@@ -67,15 +67,9 @@ export TASK_SERVER_URL=http://localhost:8080
 export TASK_USERNAME=admin
 export TASK_PASSWORD=admin123
 
-# Update password (implementation depends on CLI)
-./bin/task user update-password -new-password "your-secure-password"
-```
-
-Using the API:
-```bash
-curl -u admin:admin123 -X PUT http://localhost:8080/api/v1/users/admin \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"your-secure-password","type":"human"}'
+# Change password via direct database update or API
+# Note: Password management via CLI is not yet implemented
+# Use the web UI or API to change passwords
 ```
 
 ## Web Interface
@@ -353,6 +347,8 @@ Default output is human-readable tables.
 
 ## API Usage
 
+> **Note:** For most operations, use the `task` CLI commands shown throughout this guide. The following curl examples are provided for direct API access, automation, or integration with other tools.
+
 All API endpoints require Basic Authentication.
 
 ### Authentication
@@ -565,26 +561,24 @@ The orchestrator:
 
 ### System Configuration
 
-Configuration is stored in the database and accessed via API.
+Configuration is stored in the database and managed via the CLI.
 
 #### View Configuration
 
 ```bash
-curl -u admin:admin123 http://localhost:8080/api/v1/config
+task config list
 ```
 
 #### Set Configuration Value
 
 ```bash
-curl -u admin:admin123 -X PUT http://localhost:8080/api/v1/config/key \
-  -H "Content-Type: application/json" \
-  -d '{"value": "new-value"}'
+task config set -key key -val new-value
 ```
 
 #### Delete Configuration
 
 ```bash
-curl -u admin:admin123 -X DELETE http://localhost:8080/api/v1/config/key
+task config delete -key key
 ```
 
 ### Configuration Keys
@@ -645,8 +639,8 @@ export TASK_PASSWORD=orchpass
 
 **Error: Connection refused**
 
-- Verify server is running: `curl http://localhost:8080/api/v1/health`
-- Check `TASK_SERVER_URL` environment variable
+- Verify server is running: `task config list` (or check server process)
+- Check `TASK_URL` environment variable
 - Verify firewall/network settings
 
 ### Task Not Appearing
@@ -671,36 +665,29 @@ Scale horizontally by running multiple worker instances:
 
 ```bash
 # Terminal 1
-./bin/task-worker -server http://localhost:8080 -username worker1 -password pass1
+task worker -url http://localhost:8080 -username worker1 -password pass1
 
 # Terminal 2
-./bin/task-worker -server http://localhost:8080 -username worker2 -password pass2
+task worker -url http://localhost:8080 -username worker2 -password pass2
 
 # Terminal 3
-./bin/task-worker -server http://localhost:8080 -username worker3 -password pass3
+task worker -url http://localhost:8080 -username worker3 -password pass3
 ```
 
 ### Batch Operations
 
-Use the API for batch operations:
+Use the CLI for batch operations:
 
 ```bash
 # Create multiple tasks
 for title in "Task 1" "Task 2" "Task 3"; do
-  curl -u admin:admin123 -X POST http://localhost:8080/api/v1/tasks \
-    -H "Content-Type: application/json" \
-    -d "{\"title\":\"$title\",\"project_id\":\"<project-id>\"}"
+  task task create -title "$title" -project_id "<project-id>"
 done
 ```
 
 ### Monitoring
 
-Monitor worker health via heartbeat API:
-
-```bash
-# Check worker status
-curl -u admin:admin123 http://localhost:8080/api/v1/workers/heartbeat
-```
+Monitor worker health via server logs and worker output. Workers send heartbeats automatically to maintain their active status.
 
 ### Backup and Restore
 

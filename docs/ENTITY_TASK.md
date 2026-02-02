@@ -1,6 +1,7 @@
 # Entity: TASK
 
 ## Purpose
+
 Represents a unit of work that progresses through a lifecycle until completely finished. Tasks form a hierarchy (epic > story > task > sub-task) and track dependencies, ownership, and work history.
 
 The lifecycle of a task is that it will be worked on in some form until it is completely finished. It will be "passed" between WORKERs as it progresses, where each time it is passed it will have a new entry in its history. Eventually all the WORKERs will complete their jobs and the task will be deemed complete and finished.

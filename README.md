@@ -40,7 +40,15 @@ Task Management System is a comprehensive solution for managing software develop
 └─────────────┘            │
                            │
 ┌─────────────┐            │
-│   Worker    │────────────┘
+│  Worker 1   │────────────┤
+└─────────────┘            │
+                           │
+┌─────────────┐            │
+│  Worker 2   │────────────┤
+└─────────────┘            │
+                           │
+┌─────────────┐            │
+│  Worker N   │────────────┘
 └─────────────┘
 ```
 
@@ -58,14 +66,14 @@ Task Management System is a comprehensive solution for managing software develop
 git clone <repository-url>
 cd task
 
-# Build all binaries
+# Build the binary
 make build
 
 # Initialize database
-./bin/task-initdb -f ~/.config/task/task.db
+task initdb -f ~/.config/task/task.db
 
 # Start server
-./bin/task-server -f ~/.config/task/task.db -port 8080
+task server -f ~/.config/task/task.db -port 8080
 ```
 
 The web UI will be available at http://localhost:8080
@@ -95,20 +103,22 @@ export TASK_USERNAME=admin
 export TASK_PASSWORD=admin123
 
 # List projects
-./bin/task project list
+task project list
 
 # Create a task
-./bin/task task create -title "Implement feature" -description "Add new functionality"
+task task create -title "Implement feature" -description "Add new functionality"
 
 # List tasks
-./bin/task task list
+task task list
 ```
 
 ## Components
 
+The `task` binary provides multiple subcommands for different operational modes:
+
 ### Server
 
-The server provides:
+The server mode (`task server`) provides:
 - RESTful API endpoints (see [API Specification](api-specification.yaml))
 - Static file serving for web UI
 - Basic authentication middleware
@@ -116,7 +126,7 @@ The server provides:
 
 **Usage:**
 ```bash
-task-server -f <database-path> -port <port>
+task server -f <database-path> -port <port>
 ```
 
 ### Orchestrator
@@ -129,7 +139,7 @@ The orchestrator:
 
 **Usage:**
 ```bash
-task-orchestrator -server <server-url> -username <username> -password <password>
+task orchestrator -url <server-url> -username <username> -password <password>
 ```
 
 ### Worker
@@ -142,7 +152,7 @@ Workers:
 
 **Usage:**
 ```bash
-task-worker -server <server-url> -username <username> -password <password>
+task worker -url <server-url> -username <username> -password <password>
 ```
 
 ### CLI
@@ -157,16 +167,20 @@ See [User Guide](USER_GUIDE.md) for detailed CLI documentation.
 
 ## Configuration
 
-Configuration is stored in the database and accessed via API:
+Configuration is stored in the database and managed via CLI:
 
 ```bash
-# Set configuration value
-curl -u admin:admin123 -X PUT http://localhost:8080/api/v1/config/key \
-  -H "Content-Type: application/json" \
-  -d '{"value": "some-value"}'
+# List all configuration
+task config list
 
-# Get configuration value
-curl -u admin:admin123 http://localhost:8080/api/v1/config/key
+# Set configuration value
+task config set -key orchestrator.interval -val 60s
+
+# Get configuration value  
+task config get -key orchestrator.interval
+
+# Delete configuration
+task config delete -key orchestrator.interval
 ```
 
 Common configuration keys:
@@ -208,11 +222,7 @@ Key endpoints:
 ```
 .
 ├── cmd/                    # Command binaries
-│   ├── initdb/            # Database initialization
-│   ├── orchestrator/      # Orchestrator daemon
-│   ├── server/            # HTTP server
-│   ├── task/              # CLI client
-│   └── worker/            # Worker daemon
+│   └── task-unified/      # Single unified binary (task)
 ├── internal/              # Internal packages
 │   ├── cli/              # CLI implementation
 │   ├── db/               # Database layer
@@ -234,15 +244,8 @@ Key endpoints:
 ### Building
 
 ```bash
-# Build all binaries
+# Build the binary
 make build
-
-# Build specific component
-make server
-make orchestrator
-make worker
-make cli
-make initdb
 
 # Run tests
 make test

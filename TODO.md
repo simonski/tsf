@@ -1,8 +1,8 @@
 # TODO
 
-- bug ux: the overview once loaded no longer shows hte panel when the hamburger is clicked
-
 ## Completed
+
+✅ bug ux: the overview once loaded no longer shows hte panel when the hamburger is clicked
 
 ✅ add an overview link in the settings panel - the page should show the configuration and workers in a threejs 2d graph
 
