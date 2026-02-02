@@ -104,6 +104,186 @@ function logout() {
     showScreen('auth-screen');
 }
 
+// Overview Visualization
+let overviewScene = null;
+let overviewCamera = null;
+let overviewRenderer = null;
+let overviewAnimationId = null;
+
+async function showOverview() {
+    showScreen('overview-screen');
+    await initOverviewVisualization();
+}
+
+async function initOverviewVisualization() {
+    const container = document.getElementById('graph-container');
+    
+    // Clean up previous instance
+    if (overviewAnimationId) {
+        cancelAnimationFrame(overviewAnimationId);
+    }
+    if (overviewRenderer) {
+        overviewRenderer.dispose();
+        container.innerHTML = '';
+    }
+    
+    // Fetch data
+    const [projects, workers] = await Promise.all([
+        apiRequest('/projects'),
+        apiRequest('/workers')
+    ]);
+    
+    // Update system stats
+    const statsContainer = document.getElementById('system-stats');
+    statsContainer.innerHTML = `
+        <div class="stat-item">
+            <div class="stat-label">Projects</div>
+            <div class="stat-value">${projects.length}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Workers</div>
+            <div class="stat-value">${workers.length}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Active Workers</div>
+            <div class="stat-value">${workers.filter(w => w.status === 'running').length}</div>
+        </div>
+    `;
+    
+    // Initialize Three.js scene
+    const width = container.clientWidth;
+    const height = container.clientHeight || 600;
+    
+    overviewScene = new THREE.Scene();
+    overviewScene.background = new THREE.Color(0xf8fafc);
+    
+    overviewCamera = new THREE.OrthographicCamera(
+        width / -2, width / 2,
+        height / 2, height / -2,
+        1, 1000
+    );
+    overviewCamera.position.z = 500;
+    
+    overviewRenderer = new THREE.WebGLRenderer({ antialias: true });
+    overviewRenderer.setSize(width, height);
+    container.appendChild(overviewRenderer.domElement);
+    
+    // Create graph nodes
+    const nodes = [];
+    const nodeGeometry = new THREE.CircleGeometry(30, 32);
+    
+    // Central server node
+    const serverMaterial = new THREE.MeshBasicMaterial({ color: 0x2563eb });
+    const serverNode = new THREE.Mesh(nodeGeometry, serverMaterial);
+    serverNode.position.set(0, 0, 0);
+    overviewScene.add(serverNode);
+    nodes.push({ mesh: serverNode, label: 'Server', type: 'server' });
+    
+    // Worker nodes in a circle
+    const workerRadius = 200;
+    workers.forEach((worker, i) => {
+        const angle = (i / workers.length) * Math.PI * 2;
+        const x = Math.cos(angle) * workerRadius;
+        const y = Math.sin(angle) * workerRadius;
+        
+        const color = worker.status === 'running' ? 0x10b981 : 0x64748b;
+        const workerMaterial = new THREE.MeshBasicMaterial({ color });
+        const workerNode = new THREE.Mesh(nodeGeometry, workerMaterial);
+        workerNode.position.set(x, y, 0);
+        overviewScene.add(workerNode);
+        nodes.push({ mesh: workerNode, label: worker.name, type: 'worker' });
+        
+        // Connection line to server
+        const points = [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(x, y, 0)
+        ];
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+            color: worker.status === 'running' ? 0x10b981 : 0xe2e8f0,
+            linewidth: 2
+        });
+        const line = new THREE.Line(lineGeometry, lineMaterial);
+        overviewScene.add(line);
+    });
+    
+    // Project nodes around workers
+    const projectRadius = 350;
+    projects.forEach((project, i) => {
+        const angle = (i / projects.length) * Math.PI * 2;
+        const x = Math.cos(angle) * projectRadius;
+        const y = Math.sin(angle) * projectRadius;
+        
+        const projectMaterial = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+        const projectNode = new THREE.Mesh(
+            new THREE.CircleGeometry(20, 32),
+            projectMaterial
+        );
+        projectNode.position.set(x, y, 0);
+        overviewScene.add(projectNode);
+        nodes.push({ mesh: projectNode, label: project.name, type: 'project' });
+    });
+    
+    // Add labels
+    nodes.forEach(node => {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 256;
+        canvas.height = 64;
+        
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = '#1e293b';
+        context.font = 'bold 20px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(node.label, canvas.width / 2, canvas.height / 2);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(128, 32, 1);
+        sprite.position.set(
+            node.mesh.position.x,
+            node.mesh.position.y - 50,
+            0
+        );
+        overviewScene.add(sprite);
+    });
+    
+    // Animation loop
+    function animate() {
+        overviewAnimationId = requestAnimationFrame(animate);
+        
+        // Gentle rotation of worker nodes
+        nodes.forEach((node, i) => {
+            if (node.type === 'worker') {
+                const time = Date.now() * 0.0001;
+                node.mesh.position.x = Math.cos(time + i) * workerRadius;
+                node.mesh.position.y = Math.sin(time + i) * workerRadius;
+            }
+        });
+        
+        overviewRenderer.render(overviewScene, overviewCamera);
+    }
+    
+    animate();
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        const newWidth = container.clientWidth;
+        const newHeight = container.clientHeight || 600;
+        
+        overviewCamera.left = newWidth / -2;
+        overviewCamera.right = newWidth / 2;
+        overviewCamera.top = newHeight / 2;
+        overviewCamera.bottom = newHeight / -2;
+        overviewCamera.updateProjectionMatrix();
+        
+        overviewRenderer.setSize(newWidth, newHeight);
+    });
+}
+
 // Projects
 async function loadProjects() {
     try {
@@ -380,6 +560,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Already on projects screen
     });
     
+    document.getElementById('nav-overview').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeNav();
+        showOverview();
+    });
+    
     document.getElementById('nav-users').addEventListener('click', (e) => {
         e.preventDefault();
         closeNav();
@@ -397,6 +583,18 @@ document.addEventListener('DOMContentLoaded', () => {
         closeNav();
         logout();
     });
+    
+    // Overview Screen
+    const overviewMenuToggle = document.getElementById('overview-menu-toggle');
+    const overviewLogoutButton = document.getElementById('overview-logout-button');
+    
+    if (overviewMenuToggle) {
+        overviewMenuToggle.addEventListener('click', openNav);
+    }
+    
+    if (overviewLogoutButton) {
+        overviewLogoutButton.addEventListener('click', logout);
+    }
     
     // Auto-login from localStorage
     const savedCredentials = localStorage.getItem('credentials');

@@ -1,5 +1,6 @@
 # TODO
 
+- add an overview link in the settings panel - the page should show the configuraiton and workers in a threejs 2d graph
 
 ## Fixed Bugs
 

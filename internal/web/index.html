@@ -43,6 +43,7 @@
                     <button id="nav-close" class="nav-close-button">&times;</button>
                 </div>
                 <ul class="side-nav-links">
+                    <li><a href="#" id="nav-overview" class="nav-link">Overview</a></li>
                     <li><a href="#" id="nav-projects" class="nav-link active">Projects</a></li>
                     <li><a href="#" id="nav-users" class="nav-link">Users</a></li>
                     <li><a href="#" id="nav-settings" class="nav-link">Settings</a></li>
@@ -146,8 +147,32 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Overview Screen -->
+        <div id="overview-screen" class="screen hidden">
+            <header class="app-header">
+                <button id="overview-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>System Overview</h1>
+                <div class="header-controls">
+                    <button id="overview-logout-button" class="secondary-button">Logout</button>
+                </div>
+            </header>
+            
+            <div class="overview-container">
+                <div id="graph-container" class="graph-container"></div>
+                <div class="overview-info">
+                    <h3>System Information</h3>
+                    <div id="system-stats"></div>
+                </div>
+            </div>
+        </div>
     </div>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>
