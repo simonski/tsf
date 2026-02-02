@@ -346,6 +346,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // Navigation Menu
+    const menuToggle = document.getElementById('menu-toggle');
+    const sideNav = document.getElementById('side-nav');
+    const navOverlay = document.getElementById('nav-overlay');
+    const navClose = document.getElementById('nav-close');
+    
+    function openNav() {
+        sideNav.classList.add('open');
+        navOverlay.classList.add('visible');
+    }
+    
+    function closeNav() {
+        sideNav.classList.remove('open');
+        navOverlay.classList.remove('visible');
+    }
+    
+    menuToggle.addEventListener('click', openNav);
+    navClose.addEventListener('click', closeNav);
+    navOverlay.addEventListener('click', closeNav);
+    
+    // Navigation Links
+    document.getElementById('nav-projects').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeNav();
+        // Already on projects screen
+    });
+    
+    document.getElementById('nav-users').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeNav();
+        alert('Users management coming soon!');
+    });
+    
+    document.getElementById('nav-settings').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeNav();
+        alert('Settings coming soon!');
+    });
+    
+    document.getElementById('nav-logout').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeNav();
+        logout();
+    });
+    
     // Auto-login from localStorage
     const savedCredentials = localStorage.getItem('credentials');
     if (savedCredentials) {

@@ -379,6 +379,152 @@ body {
     border-top: 2px solid var(--border);
 }
 
+/* Hamburger Menu */
+.hamburger-menu {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1001;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 48px;
+    height: 48px;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px var(--shadow);
+}
+
+.hamburger-menu:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+}
+
+.hamburger-menu span {
+    display: block;
+    width: 24px;
+    height: 3px;
+    background: var(--text-primary);
+    border-radius: 2px;
+    transition: all 0.3s;
+}
+
+.hamburger-menu:hover span {
+    background: white;
+}
+
+/* Side Navigation */
+.side-nav {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 300px;
+    height: 100vh;
+    background: var(--surface);
+    box-shadow: 2px 0 10px var(--shadow);
+    z-index: 1002;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+}
+
+.side-nav.open {
+    left: 0;
+}
+
+.side-nav-header {
+    padding: 20px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.side-nav-header h2 {
+    color: var(--primary-color);
+    font-size: 20px;
+}
+
+.nav-close-button {
+    background: none;
+    border: none;
+    font-size: 32px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.nav-close-button:hover {
+    background: var(--background);
+    color: var(--text-primary);
+}
+
+.side-nav-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.side-nav-links li {
+    border-bottom: 1px solid var(--border);
+}
+
+.nav-link {
+    display: block;
+    padding: 16px 20px;
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: all 0.2s;
+    font-size: 16px;
+}
+
+.nav-link:hover {
+    background: var(--background);
+    color: var(--primary-color);
+    padding-left: 30px;
+}
+
+.nav-link.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.nav-link.active:hover {
+    background: var(--primary-hover);
+    padding-left: 30px;
+}
+
+/* Navigation Overlay */
+.nav-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.nav-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .kanban-board {

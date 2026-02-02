@@ -8,6 +8,7 @@
 
 ## Completed Improvements
 
+- [x] Create sliding panel navigation with hamburger menu (projects, users, settings, logout)
 - [x] `task initdb --force` - add --force option to rebuild database (removes and recreates)
 - [x] `task` should render the whole usage
 - [x] `make build` should build the binary to ./, not ./bin  
