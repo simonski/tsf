@@ -3,6 +3,8 @@
 
 ## Fixed Bugs
 
+- [x] UX: Move website title to the right of hamburger icon in header
+
 - [x] UX: Focus on username field on login page
 - [x] UX: Focus on username field on register page
 

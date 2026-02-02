@@ -145,11 +145,14 @@ body {
     justify-content: space-between;
     align-items: center;
     box-shadow: 0 2px 4px var(--shadow);
+    gap: 15px;
 }
 
 .app-header h1 {
     font-size: 24px;
     color: var(--primary-color);
+    margin: 0;
+    flex-shrink: 0;
 }
 
 .header-controls {
@@ -381,29 +384,25 @@ body {
 
 /* Hamburger Menu */
 .hamburger-menu {
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    z-index: 1001;
-    background: var(--surface);
-    border: 2px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 8px;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     gap: 4px;
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     justify-content: center;
     align-items: center;
     transition: all 0.3s;
-    box-shadow: 0 2px 4px var(--shadow);
+    flex-shrink: 0;
 }
 
 .hamburger-menu:hover {
-    border-color: var(--primary-color);
-    background: var(--primary-color);
+    background: var(--background);
+    border-radius: 6px;
 }
 
 .hamburger-menu span {
@@ -416,7 +415,7 @@ body {
 }
 
 .hamburger-menu:hover span {
-    background: white;
+    background: var(--primary-color);
 }
 
 /* Side Navigation */
