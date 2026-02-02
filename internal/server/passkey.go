@@ -201,14 +201,13 @@ func (s *Server) handlePasskeyRegisterBegin(w http.ResponseWriter, r *http.Reque
 
 	// Store session in database
 	sessionID := uuid.New().String()
-	// Store the raw challenge bytes
-	challengeBytes := []byte(session.Challenge)
+	// session.Challenge is a string (base64url encoded), store it as text
 	expiresAt := time.Now().Add(5 * time.Minute)
 
 	_, err = s.db.Conn().Exec(`
 		INSERT INTO webauthn_sessions (id, user_id, challenge, user_verification, expires_at, session_type, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, sessionID, user.user.ID, challengeBytes, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "registration", time.Now().Format("2006-01-02 15:04:05"))
+	`, sessionID, user.user.ID, session.Challenge, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "registration", time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to create session")
 		return
@@ -235,12 +234,12 @@ func (s *Server) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Requ
 
 	// Retrieve session
 	var userID string
-	var challengeJSON []byte
+	var challenge string
 	var expiresAtStr string
 	err := s.db.Conn().QueryRow(`
 		SELECT user_id, challenge, expires_at FROM webauthn_sessions 
 		WHERE id = ? AND session_type = 'registration'
-	`, req.SessionID).Scan(&userID, &challengeJSON, &expiresAtStr)
+	`, req.SessionID).Scan(&userID, &challenge, &expiresAtStr)
 	if err != nil {
 		sendError(w, http.StatusUnauthorized, "invalid session")
 		return
@@ -268,11 +267,9 @@ func (s *Server) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Reconstruct session data
-	// The challenge is stored as raw bytes, convert to base64url string
-	challenge := protocol.URLEncodedBase64(challengeJSON)
+	// Reconstruct session data with the challenge string as-is
 	sessionData := webauthn.SessionData{
-		Challenge:        challenge.String(),
+		Challenge:        challenge,
 		UserID:           []byte(userID),
 		UserVerification: protocol.VerificationPreferred,
 	}
