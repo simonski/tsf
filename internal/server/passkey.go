@@ -3,6 +3,7 @@ package server
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -284,6 +285,9 @@ func (s *Server) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Requ
 	// Verify the credential
 	credential, err := s.webAuthn.CreateCredential(user, sessionData, parsedResponse)
 	if err != nil {
+		log.Printf("Credential verification failed: %v", err)
+		log.Printf("Session challenge: %s", sessionData.Challenge)
+		log.Printf("Parsed response challenge: %s", parsedResponse.Response.CollectedClientData.Challenge)
 		sendError(w, http.StatusBadRequest, "failed to verify credential")
 		return
 	}
@@ -362,8 +366,7 @@ func (s *Server) handlePasskeyAuthBegin(w http.ResponseWriter, r *http.Request) 
 
 	// Store session in database
 	sessionID := uuid.New().String()
-	// Store the raw challenge bytes
-	challengeBytes := []byte(session.Challenge)
+	// session.Challenge is a string (base64url encoded), store it as-is
 	expiresAt := time.Now().Add(5 * time.Minute)
 
 	var userIDPtr *string
@@ -374,7 +377,7 @@ func (s *Server) handlePasskeyAuthBegin(w http.ResponseWriter, r *http.Request) 
 	_, err = s.db.Conn().Exec(`
 		INSERT INTO webauthn_sessions (id, user_id, challenge, user_verification, expires_at, session_type, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, sessionID, userIDPtr, challengeBytes, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "authentication", time.Now().Format("2006-01-02 15:04:05"))
+	`, sessionID, userIDPtr, session.Challenge, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "authentication", time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to create session")
 		return
@@ -401,12 +404,12 @@ func (s *Server) handlePasskeyAuthFinish(w http.ResponseWriter, r *http.Request)
 
 	// Retrieve session
 	var userID sql.NullString
-	var challengeJSON []byte
+	var challenge string
 	var expiresAtStr string
 	err := s.db.Conn().QueryRow(`
 		SELECT user_id, challenge, expires_at FROM webauthn_sessions 
 		WHERE id = ? AND session_type = 'authentication'
-	`, req.SessionID).Scan(&userID, &challengeJSON, &expiresAtStr)
+	`, req.SessionID).Scan(&userID, &challenge, &expiresAtStr)
 	if err != nil {
 		sendError(w, http.StatusUnauthorized, "invalid session")
 		return
@@ -441,11 +444,9 @@ func (s *Server) handlePasskeyAuthFinish(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Reconstruct session data
-	// The challenge is stored as raw bytes, convert to base64url string
-	challenge := protocol.URLEncodedBase64(challengeJSON)
+	// Reconstruct session data with the challenge string as-is
 	sessionData := webauthn.SessionData{
-		Challenge:        challenge.String(),
+		Challenge:        challenge,
 		UserID:           []byte(credUserID),
 		UserVerification: protocol.VerificationPreferred,
 	}
