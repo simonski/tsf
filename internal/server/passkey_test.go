@@ -12,16 +12,16 @@ import (
 func setupTestDB(t *testing.T) *db.DB {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
-	
+
 	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
-	
+
 	if err := database.InitSchema(); err != nil {
 		t.Fatalf("Failed to initialize schema: %v", err)
 	}
-	
+
 	return database
 }
 
@@ -34,7 +34,7 @@ func TestPasskeySessionStorage(t *testing.T) {
 	userID := "test-user-id"
 	username := "testuser"
 	passwordHash, _ := db.HashPassword("testpass")
-	
+
 	_, err := database.Conn().Exec(`
 		INSERT INTO users (id, username, password_hash, type, is_active, created_at, updated_at)
 		VALUES (?, ?, ?, 'human', 1, datetime('now'), datetime('now'))
@@ -68,7 +68,7 @@ func TestPasskeySessionStorage(t *testing.T) {
 		FROM webauthn_sessions 
 		WHERE id = ? AND session_type = 'registration'
 	`, sessionID).Scan(&storedSessionID, &storedUserID, &storedChallengeJSON, &storedExpiresAt)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to retrieve WebAuthn session: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestPasskeyCredentialStorage(t *testing.T) {
 	userID := "test-user-id"
 	username := "testuser"
 	passwordHash, _ := db.HashPassword("testpass")
-	
+
 	_, err := database.Conn().Exec(`
 		INSERT INTO users (id, username, password_hash, type, is_active, created_at, updated_at)
 		VALUES (?, ?, ?, 'human', 1, datetime('now'), datetime('now'))
@@ -124,7 +124,7 @@ func TestPasskeyCredentialStorage(t *testing.T) {
 			device_name, created_at
 		) VALUES (?, ?, ?, ?, 'none', ?, 0, 0, '[]', 0, 0, ?, datetime('now'))
 	`, credID, userID, credentialID, publicKey, make([]byte, 16), deviceName)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to create passkey credential: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestPasskeyCredentialStorage(t *testing.T) {
 		FROM passkey_credentials
 		WHERE id = ?
 	`, credID).Scan(&storedCredID, &storedUserID, &storedCredentialID, &storedDeviceName)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to retrieve passkey credential: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestPasskeyCredentialLookup(t *testing.T) {
 	userID := "test-user-id"
 	username := "testuser"
 	passwordHash, _ := db.HashPassword("testpass")
-	
+
 	_, err := database.Conn().Exec(`
 		INSERT INTO users (id, username, password_hash, type, is_active, created_at, updated_at)
 		VALUES (?, ?, ?, 'human', 1, datetime('now'), datetime('now'))
@@ -193,7 +193,7 @@ func TestPasskeyCredentialLookup(t *testing.T) {
 				device_name, created_at
 			) VALUES (?, ?, ?, ?, 'none', ?, 0, 0, '[]', 0, 0, 'Device', datetime('now'))
 		`, credID, userID, credentialID, publicKey, make([]byte, 16))
-		
+
 		if err != nil {
 			t.Fatalf("Failed to create passkey credential %d: %v", i, err)
 		}
@@ -236,7 +236,7 @@ func TestPasskeySessionExpiration(t *testing.T) {
 	userID := "test-user-id"
 	username := "testuser"
 	passwordHash, _ := db.HashPassword("testpass")
-	
+
 	_, err := database.Conn().Exec(`
 		INSERT INTO users (id, username, password_hash, type, is_active, created_at, updated_at)
 		VALUES (?, ?, ?, 'human', 1, datetime('now'), datetime('now'))
@@ -264,7 +264,7 @@ func TestPasskeySessionExpiration(t *testing.T) {
 	err = database.Conn().QueryRow(`
 		SELECT expires_at FROM webauthn_sessions WHERE id = ?
 	`, sessionID).Scan(&storedExpiresAt)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to retrieve session: %v", err)
 	}

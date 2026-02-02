@@ -129,11 +129,11 @@ type PasskeyCredential struct {
 
 // WebAuthnSession represents a temporary session during passkey registration/authentication
 type WebAuthnSession struct {
-	ID              string    `json:"id"`
-	UserID          *string   `json:"user_id,omitempty"`
-	Challenge       []byte    `json:"challenge"`
-	UserVerification string   `json:"user_verification"`
-	ExpiresAt       time.Time `json:"expires_at"`
-	SessionType     string    `json:"session_type"` // registration, authentication
-	CreatedAt       time.Time `json:"created_at"`
+	ID               string    `json:"id"`
+	UserID           *string   `json:"user_id,omitempty"`
+	Challenge        []byte    `json:"challenge"`
+	UserVerification string    `json:"user_verification"`
+	ExpiresAt        time.Time `json:"expires_at"`
+	SessionType      string    `json:"session_type"` // registration, authentication
+	CreatedAt        time.Time `json:"created_at"`
 }

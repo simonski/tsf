@@ -1,6 +1,7 @@
 # TODO
 
-- investigate playwright integration testing for the frontend
+- bug: creating passkey fails "failed to verify credential"
+- investigate playwright integration testing for frontend
 
 ## Recent Improvements (Feb 2026)
 

@@ -45,15 +45,15 @@ type PasskeyRegisterBeginRequest struct {
 
 // PasskeyRegisterBeginResponse represents the response to start passkey registration
 type PasskeyRegisterBeginResponse struct {
-	SessionID string                                `json:"session_id"`
-	Options   *protocol.CredentialCreation          `json:"options"`
+	SessionID string                       `json:"session_id"`
+	Options   *protocol.CredentialCreation `json:"options"`
 }
 
 // PasskeyRegisterFinishRequest represents the request to complete passkey registration
 type PasskeyRegisterFinishRequest struct {
-	SessionID  string                              `json:"session_id"`
+	SessionID  string                               `json:"session_id"`
 	Credential *protocol.CredentialCreationResponse `json:"credential"`
-	DeviceName string                              `json:"device_name,omitempty"`
+	DeviceName string                               `json:"device_name,omitempty"`
 }
 
 // PasskeyAuthBeginRequest represents the request to start passkey authentication
@@ -63,14 +63,14 @@ type PasskeyAuthBeginRequest struct {
 
 // PasskeyAuthBeginResponse represents the response to start passkey authentication
 type PasskeyAuthBeginResponse struct {
-	SessionID string                              `json:"session_id"`
-	Options   *protocol.CredentialAssertion       `json:"options"`
+	SessionID string                        `json:"session_id"`
+	Options   *protocol.CredentialAssertion `json:"options"`
 }
 
 // PasskeyAuthFinishRequest represents the request to complete passkey authentication
 type PasskeyAuthFinishRequest struct {
-	SessionID  string                                 `json:"session_id"`
-	Credential *protocol.CredentialAssertionResponse  `json:"credential"`
+	SessionID  string                                `json:"session_id"`
+	Credential *protocol.CredentialAssertionResponse `json:"credential"`
 }
 
 // getWebAuthnUser fetches a user and their credentials for WebAuthn
@@ -201,13 +201,14 @@ func (s *Server) handlePasskeyRegisterBegin(w http.ResponseWriter, r *http.Reque
 
 	// Store session in database
 	sessionID := uuid.New().String()
-	challengeJSON, _ := json.Marshal(session.Challenge)
+	// Store the raw challenge bytes
+	challengeBytes := []byte(session.Challenge)
 	expiresAt := time.Now().Add(5 * time.Minute)
 
 	_, err = s.db.Conn().Exec(`
 		INSERT INTO webauthn_sessions (id, user_id, challenge, user_verification, expires_at, session_type, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, sessionID, user.user.ID, challengeJSON, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "registration", time.Now().Format("2006-01-02 15:04:05"))
+	`, sessionID, user.user.ID, challengeBytes, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "registration", time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to create session")
 		return
@@ -268,8 +269,8 @@ func (s *Server) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Reconstruct session data
-	var challenge protocol.URLEncodedBase64
-	json.Unmarshal(challengeJSON, &challenge)
+	// The challenge is stored as raw bytes, convert to base64url string
+	challenge := protocol.URLEncodedBase64(challengeJSON)
 	sessionData := webauthn.SessionData{
 		Challenge:        challenge.String(),
 		UserID:           []byte(userID),
@@ -364,7 +365,8 @@ func (s *Server) handlePasskeyAuthBegin(w http.ResponseWriter, r *http.Request) 
 
 	// Store session in database
 	sessionID := uuid.New().String()
-	challengeJSON, _ := json.Marshal(session.Challenge)
+	// Store the raw challenge bytes
+	challengeBytes := []byte(session.Challenge)
 	expiresAt := time.Now().Add(5 * time.Minute)
 
 	var userIDPtr *string
@@ -375,7 +377,7 @@ func (s *Server) handlePasskeyAuthBegin(w http.ResponseWriter, r *http.Request) 
 	_, err = s.db.Conn().Exec(`
 		INSERT INTO webauthn_sessions (id, user_id, challenge, user_verification, expires_at, session_type, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, sessionID, userIDPtr, challengeJSON, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "authentication", time.Now().Format("2006-01-02 15:04:05"))
+	`, sessionID, userIDPtr, challengeBytes, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "authentication", time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to create session")
 		return
@@ -443,8 +445,8 @@ func (s *Server) handlePasskeyAuthFinish(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Reconstruct session data
-	var challenge protocol.URLEncodedBase64
-	json.Unmarshal(challengeJSON, &challenge)
+	// The challenge is stored as raw bytes, convert to base64url string
+	challenge := protocol.URLEncodedBase64(challengeJSON)
 	sessionData := webauthn.SessionData{
 		Challenge:        challenge.String(),
 		UserID:           []byte(credUserID),

@@ -25,7 +25,7 @@ func New(database *db.DB) *Server {
 		RPID:          "localhost",
 		RPOrigins:     []string{"http://localhost:8080", "https://localhost:8080"},
 	}
-	
+
 	webAuthn, err := webauthn.New(wconfig)
 	if err != nil {
 		log.Printf("Failed to initialize WebAuthn: %v", err)
@@ -49,7 +49,7 @@ func (s *Server) SetWebAuthnConfig(rpID string, rpOrigins []string) error {
 		RPID:          rpID,
 		RPOrigins:     rpOrigins,
 	}
-	
+
 	var err error
 	s.webAuthn, err = webauthn.New(wconfig)
 	return err
