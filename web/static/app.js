@@ -258,6 +258,9 @@ async function saveTask() {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
+    // Set focus on login username by default
+    document.getElementById('login-username').focus();
+    
     // Auth Tab Switching
     document.getElementById('login-tab').addEventListener('click', () => {
         document.getElementById('login-tab').classList.add('active');
@@ -265,6 +268,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('login-form').classList.remove('hidden');
         document.getElementById('register-form').classList.add('hidden');
         hideError('auth-error');
+        // Focus on login username when switching to login tab
+        document.getElementById('login-username').focus();
     });
     
     document.getElementById('register-tab').addEventListener('click', () => {
@@ -273,6 +278,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('register-form').classList.remove('hidden');
         document.getElementById('login-form').classList.add('hidden');
         hideError('auth-error');
+        // Focus on register username when switching to register tab
+        document.getElementById('register-username').focus();
     });
     
     // Login
