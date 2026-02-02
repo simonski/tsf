@@ -12,6 +12,7 @@ import (
 func initDBMain() {
 	dbPath := flag.String("f", "", "Path to database file (default: ~/.config/task/task.db)")
 	force := flag.Bool("force", false, "Force rebuild database (removes existing database)")
+	adminPassword := flag.String("password", "", "Set admin password (if not provided, a random password is generated)")
 	flag.Parse()
 
 	finalPath := *dbPath
@@ -46,7 +47,7 @@ func initDBMain() {
 	}
 	defer database.Close()
 
-	adminPassword, orchestratorPassword, err := database.InitializeDatabase()
+	actualAdminPassword, orchestratorPassword, err := database.InitializeDatabaseWithPasswords(*adminPassword, "")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: Failed to initialize database: %v\n", err)
 		os.Remove(finalPath)
@@ -57,7 +58,7 @@ func initDBMain() {
 	fmt.Printf("Location: %s\n\n", finalPath)
 	fmt.Println("Admin credentials:")
 	fmt.Println("  Username: admin")
-	fmt.Printf("  Password: %s\n\n", adminPassword)
+	fmt.Printf("  Password: %s\n\n", actualAdminPassword)
 	fmt.Println("Orchestrator credentials:")
 	fmt.Println("  Username: orchestrator")
 	fmt.Printf("  Password: %s\n\n", orchestratorPassword)

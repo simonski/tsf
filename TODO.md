@@ -8,6 +8,7 @@
 
 ## Completed Improvements
 
+- [x] Add `-password` option to `task initdb` to set custom admin password
 - [x] Create sliding panel navigation with hamburger menu (projects, users, settings, logout)
 - [x] `task initdb --force` - add --force option to rebuild database (removes and recreates)
 - [x] `task` should render the whole usage

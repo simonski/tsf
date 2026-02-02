@@ -9,20 +9,31 @@ import (
 
 // InitializeDatabase sets up a new database with default data
 func (db *DB) InitializeDatabase() (adminPassword, orchestratorPassword string, err error) {
+	return db.InitializeDatabaseWithPasswords("", "")
+}
+
+// InitializeDatabaseWithPasswords sets up a new database with custom passwords
+// If passwords are empty strings, random passwords will be generated
+func (db *DB) InitializeDatabaseWithPasswords(adminPassword, orchestratorPassword string) (string, string, error) {
 	// Apply schema
 	if err := db.InitSchema(); err != nil {
 		return "", "", fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
-	// Generate passwords
-	adminPassword, err = GeneratePassword(16)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to generate admin password: %w", err)
+	// Generate passwords if not provided
+	var err error
+	if adminPassword == "" {
+		adminPassword, err = GeneratePassword(16)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to generate admin password: %w", err)
+		}
 	}
 
-	orchestratorPassword, err = GeneratePassword(16)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to generate orchestrator password: %w", err)
+	if orchestratorPassword == "" {
+		orchestratorPassword, err = GeneratePassword(16)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to generate orchestrator password: %w", err)
+		}
 	}
 
 	// Hash passwords
