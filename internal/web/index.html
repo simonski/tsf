@@ -8,6 +8,24 @@
 </head>
 <body>
     <div id="app">
+        <!-- Sliding Navigation Panel (shared across screens) -->
+        <nav id="side-nav" class="side-nav">
+            <div class="side-nav-header">
+                <h2>Menu</h2>
+                <button id="nav-close" class="nav-close-button">&times;</button>
+            </div>
+            <ul class="side-nav-links">
+                <li><a href="#" id="nav-overview" class="nav-link">Overview</a></li>
+                <li><a href="#" id="nav-projects" class="nav-link active">Projects</a></li>
+                <li><a href="#" id="nav-users" class="nav-link">Users</a></li>
+                <li><a href="#" id="nav-settings" class="nav-link">Settings</a></li>
+                <li><a href="#" id="nav-logout" class="nav-link">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <!-- Overlay for closing menu (shared across screens) -->
+        <div id="nav-overlay" class="nav-overlay"></div>
+        
         <!-- Login/Register Screen -->
         <div id="auth-screen" class="screen">
             <div class="auth-container">
@@ -36,24 +54,6 @@
 
         <!-- Kanban Board Screen -->
         <div id="board-screen" class="screen hidden">
-            <!-- Sliding Navigation Panel -->
-            <nav id="side-nav" class="side-nav">
-                <div class="side-nav-header">
-                    <h2>Menu</h2>
-                    <button id="nav-close" class="nav-close-button">&times;</button>
-                </div>
-                <ul class="side-nav-links">
-                    <li><a href="#" id="nav-overview" class="nav-link">Overview</a></li>
-                    <li><a href="#" id="nav-projects" class="nav-link active">Projects</a></li>
-                    <li><a href="#" id="nav-users" class="nav-link">Users</a></li>
-                    <li><a href="#" id="nav-settings" class="nav-link">Settings</a></li>
-                    <li><a href="#" id="nav-logout" class="nav-link">Logout</a></li>
-                </ul>
-            </nav>
-            
-            <!-- Overlay for closing menu -->
-            <div id="nav-overlay" class="nav-overlay"></div>
-            
             <header class="app-header">
                 <!-- Hamburger Menu Button -->
                 <button id="menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
