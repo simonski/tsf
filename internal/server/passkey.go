@@ -200,15 +200,19 @@ func (s *Server) handlePasskeyRegisterBegin(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Store session in database
+	// Store session in database as JSON
 	sessionID := uuid.New().String()
-	// session.Challenge is a string (base64url encoded), store it as text
+	sessionJSON, err := json.Marshal(session)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to serialize session")
+		return
+	}
 	expiresAt := time.Now().Add(5 * time.Minute)
 
 	_, err = s.db.Conn().Exec(`
 		INSERT INTO webauthn_sessions (id, user_id, challenge, user_verification, expires_at, session_type, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, sessionID, user.user.ID, session.Challenge, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "registration", time.Now().Format("2006-01-02 15:04:05"))
+	`, sessionID, user.user.ID, sessionJSON, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "registration", time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to create session")
 		return
@@ -235,12 +239,12 @@ func (s *Server) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Requ
 
 	// Retrieve session
 	var userID string
-	var challenge string
+	var sessionJSON []byte
 	var expiresAtStr string
 	err := s.db.Conn().QueryRow(`
 		SELECT user_id, challenge, expires_at FROM webauthn_sessions 
 		WHERE id = ? AND session_type = 'registration'
-	`, req.SessionID).Scan(&userID, &challenge, &expiresAtStr)
+	`, req.SessionID).Scan(&userID, &sessionJSON, &expiresAtStr)
 	if err != nil {
 		sendError(w, http.StatusUnauthorized, "invalid session")
 		return
@@ -251,6 +255,13 @@ func (s *Server) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Requ
 	if time.Now().After(expiresAt) {
 		s.db.Conn().Exec("DELETE FROM webauthn_sessions WHERE id = ?", req.SessionID)
 		sendError(w, http.StatusUnauthorized, "session expired")
+		return
+	}
+
+	// Deserialize session data
+	var sessionData webauthn.SessionData
+	if err := json.Unmarshal(sessionJSON, &sessionData); err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to deserialize session")
 		return
 	}
 
@@ -268,19 +279,17 @@ func (s *Server) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Reconstruct session data with the challenge string as-is
-	sessionData := webauthn.SessionData{
-		Challenge:        challenge,
-		UserID:           []byte(userID),
-		UserVerification: protocol.VerificationPreferred,
-	}
-
 	// Parse the credential creation response
 	parsedResponse, err := req.Credential.Parse()
 	if err != nil {
+		log.Printf("Failed to parse credential: %v", err)
 		sendError(w, http.StatusBadRequest, "failed to parse credential")
 		return
 	}
+
+	// Log attestation info for debugging
+	log.Printf("Attestation format: %s", parsedResponse.Response.AttestationObject.Format)
+	log.Printf("Attestation statement keys: %v", getMapKeys(parsedResponse.Response.AttestationObject.AttStatement))
 
 	// Verify the credential
 	credential, err := s.webAuthn.CreateCredential(user, sessionData, parsedResponse)
@@ -364,9 +373,13 @@ func (s *Server) handlePasskeyAuthBegin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Store session in database
+	// Store session in database as JSON
 	sessionID := uuid.New().String()
-	// session.Challenge is a string (base64url encoded), store it as-is
+	sessionJSON, err := json.Marshal(session)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to serialize session")
+		return
+	}
 	expiresAt := time.Now().Add(5 * time.Minute)
 
 	var userIDPtr *string
@@ -377,7 +390,7 @@ func (s *Server) handlePasskeyAuthBegin(w http.ResponseWriter, r *http.Request) 
 	_, err = s.db.Conn().Exec(`
 		INSERT INTO webauthn_sessions (id, user_id, challenge, user_verification, expires_at, session_type, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, sessionID, userIDPtr, session.Challenge, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "authentication", time.Now().Format("2006-01-02 15:04:05"))
+	`, sessionID, userIDPtr, sessionJSON, session.UserVerification, expiresAt.Format("2006-01-02 15:04:05"), "authentication", time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to create session")
 		return
@@ -404,12 +417,12 @@ func (s *Server) handlePasskeyAuthFinish(w http.ResponseWriter, r *http.Request)
 
 	// Retrieve session
 	var userID sql.NullString
-	var challenge string
+	var sessionJSON []byte
 	var expiresAtStr string
 	err := s.db.Conn().QueryRow(`
 		SELECT user_id, challenge, expires_at FROM webauthn_sessions 
 		WHERE id = ? AND session_type = 'authentication'
-	`, req.SessionID).Scan(&userID, &challenge, &expiresAtStr)
+	`, req.SessionID).Scan(&userID, &sessionJSON, &expiresAtStr)
 	if err != nil {
 		sendError(w, http.StatusUnauthorized, "invalid session")
 		return
@@ -423,16 +436,35 @@ func (s *Server) handlePasskeyAuthFinish(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Deserialize session data
+	var sessionData webauthn.SessionData
+	if err := json.Unmarshal(sessionJSON, &sessionData); err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to deserialize session")
+		return
+	}
+
 	// Look up credential to find user
+	// RawID is base64url encoded, but credential.ID in the database is raw bytes
+	// The protocol library stores credential.ID as raw bytes during registration
 	var credUserID string
 	var username string
+
+	// Parse the credential to get the actual raw bytes
+	parsedCred, err := req.Credential.Parse()
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "failed to parse credential")
+		return
+	}
+
+	log.Printf("Looking up credential with RawID: %x", parsedCred.RawID)
 	err = s.db.Conn().QueryRow(`
 		SELECT pc.user_id, u.username 
 		FROM passkey_credentials pc
 		JOIN users u ON pc.user_id = u.id
 		WHERE pc.credential_id = ?
-	`, req.Credential.RawID).Scan(&credUserID, &username)
+	`, parsedCred.RawID).Scan(&credUserID, &username)
 	if err != nil {
+		log.Printf("Credential lookup failed: %v", err)
 		sendError(w, http.StatusUnauthorized, "credential not found")
 		return
 	}
@@ -440,27 +472,25 @@ func (s *Server) handlePasskeyAuthFinish(w http.ResponseWriter, r *http.Request)
 	// Get user with credentials
 	user, err := s.getWebAuthnUser(username)
 	if err != nil {
+		log.Printf("Failed to get user: %v", err)
 		sendError(w, http.StatusInternalServerError, "failed to get user")
 		return
 	}
 
-	// Reconstruct session data with the challenge string as-is
-	sessionData := webauthn.SessionData{
-		Challenge:        challenge,
-		UserID:           []byte(credUserID),
-		UserVerification: protocol.VerificationPreferred,
+	log.Printf("User has %d credentials", len(user.credentials))
+	log.Printf("Session UserVerification: %s", sessionData.UserVerification)
+	log.Printf("Session challenge: %s", sessionData.Challenge)
+
+	// For discoverable credentials (usernameless login), the session was created without a user
+	// Update the session data with the actual user ID we found from the credential
+	if !userID.Valid {
+		sessionData.UserID = []byte(user.user.ID)
 	}
 
-	// Parse the credential assertion response
-	parsedResponse, err := req.Credential.Parse()
+	// Verify the assertion using the already-parsed credential
+	credential, err := s.webAuthn.ValidateLogin(user, sessionData, parsedCred)
 	if err != nil {
-		sendError(w, http.StatusBadRequest, "failed to parse credential")
-		return
-	}
-
-	// Verify the assertion
-	credential, err := s.webAuthn.ValidateLogin(user, sessionData, parsedResponse)
-	if err != nil {
+		log.Printf("ValidateLogin failed: %v", err)
 		sendError(w, http.StatusUnauthorized, "failed to verify credential")
 		return
 	}
@@ -583,4 +613,13 @@ func (s *Server) handlePasskeyDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// getMapKeys returns the keys of a map for debugging
+func getMapKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }

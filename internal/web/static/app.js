@@ -10,8 +10,130 @@ const state = {
     tasks: []
 };
 
+// Custom Dialog System
+const Dialog = {
+    show(options) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('custom-dialog');
+            const icon = document.getElementById('dialog-icon');
+            const title = document.getElementById('dialog-title');
+            const message = document.getElementById('dialog-message');
+            const input = document.getElementById('dialog-input');
+            const buttons = document.getElementById('dialog-buttons');
+
+            // Set icon
+            icon.className = 'dialog-icon ' + (options.type || 'info');
+            const icons = {
+                success: '✓',
+                error: '✕',
+                warning: '⚠',
+                info: 'ℹ',
+                question: '?'
+            };
+            icon.textContent = icons[options.type] || icons.info;
+
+            // Set content
+            title.textContent = options.title || '';
+            message.textContent = options.message || '';
+
+            // Handle input
+            if (options.input) {
+                input.classList.remove('hidden');
+                input.value = options.inputValue || '';
+                input.placeholder = options.inputPlaceholder || '';
+                setTimeout(() => input.focus(), 100);
+            } else {
+                input.classList.add('hidden');
+            }
+
+            // Create buttons
+            buttons.innerHTML = '';
+            const buttonConfigs = options.buttons || [{ text: 'OK', primary: true }];
+            
+            buttonConfigs.forEach((btn, index) => {
+                const button = document.createElement('button');
+                button.textContent = btn.text;
+                button.className = btn.danger ? 'dialog-btn-danger' : 
+                                   btn.primary ? 'dialog-btn-primary' : 'dialog-btn-secondary';
+                button.onclick = () => {
+                    overlay.classList.add('hidden');
+                    if (options.input) {
+                        resolve(btn.primary || btn.danger ? input.value : null);
+                    } else {
+                        resolve(btn.primary || btn.danger ? true : false);
+                    }
+                };
+                buttons.appendChild(button);
+            });
+
+            // Handle Enter key for input
+            if (options.input) {
+                input.onkeypress = (e) => {
+                    if (e.key === 'Enter') {
+                        overlay.classList.add('hidden');
+                        resolve(input.value);
+                    }
+                };
+            }
+
+            // Show dialog
+            overlay.classList.remove('hidden');
+        });
+    },
+
+    alert(title, message, type = 'info') {
+        return this.show({
+            type,
+            title,
+            message,
+            buttons: [{ text: 'OK', primary: true }]
+        });
+    },
+
+    success(title, message) {
+        return this.alert(title, message, 'success');
+    },
+
+    error(title, message) {
+        return this.alert(title, message, 'error');
+    },
+
+    confirm(title, message, options = {}) {
+        return this.show({
+            type: options.type || 'question',
+            title,
+            message,
+            buttons: [
+                { text: options.cancelText || 'Cancel', primary: false },
+                { text: options.confirmText || 'Confirm', primary: !options.danger, danger: options.danger }
+            ]
+        });
+    },
+
+    prompt(title, message, defaultValue = '') {
+        return this.show({
+            type: 'info',
+            title,
+            message,
+            input: true,
+            inputValue: defaultValue,
+            buttons: [
+                { text: 'Cancel', primary: false },
+                { text: 'OK', primary: true }
+            ]
+        });
+    }
+};
+
 // Utility Functions
 function getAuthHeader() {
+    // Check for JWT token first (from passkey or token-based login)
+    const token = localStorage.getItem('authToken');
+    if (token) {
+        return 'Bearer ' + token;
+    }
+    
+    // Fall back to Basic auth
     if (!state.credentials) return null;
     return 'Basic ' + btoa(state.credentials.username + ':' + state.credentials.password);
 }
@@ -32,7 +154,7 @@ async function apiRequest(endpoint, options = {}) {
         headers
     });
     
-    if (response.status === 401) {
+    if (response.status === 401 && !options.skipAutoLogout) {
         logout();
         throw new Error('Unauthorized');
     }
@@ -362,7 +484,8 @@ async function authenticateWithPasskey(username = null) {
         // Begin authentication
         const beginResponse = await apiRequest('/auth/passkey/authenticate/begin', {
             method: 'POST',
-            body: JSON.stringify({ username })
+            body: JSON.stringify({ username }),
+            skipAutoLogout: true
         });
 
         // Convert challenge from base64url
@@ -394,12 +517,14 @@ async function authenticateWithPasskey(username = null) {
                         userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : null
                     }
                 }
-            })
+            }),
+            skipAutoLogout: true
         });
 
         // Store token and user info
         state.currentUser = loginResponse.user;
         localStorage.setItem('authToken', loginResponse.token);
+        console.log('Passkey login successful, token stored:', loginResponse.token.substring(0, 20) + '...');
         await loadProjects();
         showScreen('board-screen');
         return true;
@@ -439,7 +564,13 @@ async function loadPasskeys() {
 }
 
 async function deletePasskey(passkeyId) {
-    if (!confirm('Are you sure you want to delete this passkey?')) {
+    const confirmed = await Dialog.confirm(
+        'Delete Passkey',
+        'Are you sure you want to delete this passkey? You will no longer be able to sign in with it.',
+        { danger: true, confirmText: 'Delete' }
+    );
+    
+    if (!confirmed) {
         return;
     }
 
@@ -494,7 +625,7 @@ async function loadTasks(projectId) {
     
     try {
         state.currentProject = projectId;
-        const tasks = await apiRequest(`/projects/${projectId}/tasks`);
+        const tasks = await apiRequest(`/tasks?project_id=${projectId}`);
         state.tasks = tasks;
         renderBoard();
     } catch (error) {
@@ -506,6 +637,11 @@ async function loadTasks(projectId) {
 
 // Board Rendering
 function renderBoard() {
+    // Ensure tasks is an array
+    if (!state.tasks) {
+        state.tasks = [];
+    }
+    
     const statuses = ['todo', 'in_progress', 'blocked', 'completed'];
     
     statuses.forEach(status => {
@@ -603,15 +739,50 @@ async function saveTask() {
             closeTaskModal();
         } catch (error) {
             console.error('Failed to update task:', error);
-            alert('Failed to update task: ' + error.message);
+            Dialog.error('Update Failed', 'Failed to update task: ' + error.message);
         }
     } else {
         closeTaskModal();
     }
 }
 
+// Session Management
+async function initializeSession() {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+        return; // No token, stay on login screen
+    }
+    
+    try {
+        // Try to load user info by fetching projects (validates token)
+        const projects = await apiRequest('/projects');
+        
+        // Token is valid, fetch current user info
+        const users = await apiRequest('/users');
+        if (users && users.length > 0) {
+            // Find current user by decoding the JWT token
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            state.currentUser = users.find(u => u.id === payload.user_id);
+            
+            if (state.currentUser) {
+                state.projects = projects;
+                showScreen('board-screen');
+                await loadProjects();
+            }
+        }
+    } catch (error) {
+        // Token is invalid or expired, clear it
+        console.log('Session restore failed:', error.message);
+        localStorage.removeItem('authToken');
+        state.currentUser = null;
+    }
+}
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
+    // Try to restore session from JWT token
+    initializeSession();
+    
     // Set focus on login username by default
     document.getElementById('login-username').focus();
     
@@ -754,7 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('nav-users').addEventListener('click', (e) => {
         e.preventDefault();
         closeNav();
-        alert('Users management coming soon!');
+        Dialog.alert('Coming Soon', 'Users management will be available in a future update.', 'info');
     });
     
     document.getElementById('nav-settings').addEventListener('click', (e) => {
@@ -796,10 +967,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (registerPasskeyButton) {
         registerPasskeyButton.addEventListener('click', async () => {
-            const deviceName = prompt('Enter a name for this passkey (optional):');
+            const deviceName = await Dialog.prompt(
+                'Name Your Passkey',
+                'Enter a name to identify this passkey (optional):'
+            );
             try {
-                await registerPasskey(deviceName);
-                alert('Passkey registered successfully!');
+                await registerPasskey(deviceName || '');
+                await Dialog.success('Passkey Added', 'Your passkey has been registered successfully. You can now use it to sign in.');
                 await loadPasskeys();
                 hideError('passkey-error');
             } catch (error) {

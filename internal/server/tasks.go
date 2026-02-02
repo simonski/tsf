@@ -78,7 +78,8 @@ func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var tasks []db.Task
+	// Initialize with empty slice to ensure JSON returns [] not null
+	tasks := []db.Task{}
 	for rows.Next() {
 		task, err := scanTask(rows)
 		if err != nil {

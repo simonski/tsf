@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/simonski/task/internal/db"
 )
@@ -21,9 +22,10 @@ type Server struct {
 func New(database *db.DB) *Server {
 	// Initialize WebAuthn
 	wconfig := &webauthn.Config{
-		RPDisplayName: "Task Management System",
-		RPID:          "localhost",
-		RPOrigins:     []string{"http://localhost:8080", "https://localhost:8080"},
+		RPDisplayName:         "Task Management System",
+		RPID:                  "localhost",
+		RPOrigins:             []string{"http://localhost:8080", "https://localhost:8080"},
+		AttestationPreference: protocol.PreferNoAttestation,
 	}
 
 	webAuthn, err := webauthn.New(wconfig)
@@ -45,9 +47,10 @@ func (s *Server) SetWebFS(webFS embed.FS) {
 // SetWebAuthnConfig updates WebAuthn configuration with custom values
 func (s *Server) SetWebAuthnConfig(rpID string, rpOrigins []string) error {
 	wconfig := &webauthn.Config{
-		RPDisplayName: "Task Management System",
-		RPID:          rpID,
-		RPOrigins:     rpOrigins,
+		RPDisplayName:         "Task Management System",
+		RPID:                  rpID,
+		RPOrigins:             rpOrigins,
+		AttestationPreference: protocol.PreferNoAttestation,
 	}
 
 	var err error
