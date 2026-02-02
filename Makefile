@@ -55,12 +55,12 @@ test-e2e-setup:
 
 test-e2e: build
 	@echo "Running Playwright E2E tests..."
-	@./task initdb -f task.test.db --force || true
+	@./task initdb -f task.test.db --force -password admin || true
 	@cd tests/e2e && npm test
 
 test-e2e-ui: build
 	@echo "Running Playwright E2E tests in UI mode..."
-	@./task initdb -f task.test.db --force || true
+	@./task initdb -f task.test.db --force -password admin || true
 	@cd tests/e2e && npm run test:ui
 
 docker:

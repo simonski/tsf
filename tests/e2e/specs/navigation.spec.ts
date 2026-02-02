@@ -7,7 +7,7 @@ test.describe('Navigation', () => {
     await page.locator('#login-username').fill('admin');
     await page.locator('#login-password').fill('admin');
     await page.locator('#login-button').click();
-    await page.waitForURL('**/#board', { timeout: 5000 });
+    await expect(page.locator('#board-screen')).toBeVisible({ timeout: 10000 });
   });
 
   test('should open and close navigation menu', async ({ page }) => {

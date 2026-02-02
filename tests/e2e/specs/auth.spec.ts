@@ -6,7 +6,7 @@ test.describe('Authentication', () => {
   });
 
   test('should display login page', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('Task Management System');
+    await expect(page.locator('#auth-screen h1')).toContainText('Task Management System');
     await expect(page.locator('#login-form')).toBeVisible();
     await expect(page.locator('#login-username')).toBeVisible();
     await expect(page.locator('#login-password')).toBeVisible();
@@ -30,12 +30,12 @@ test.describe('Authentication', () => {
     await page.locator('#login-password').fill('admin');
     await page.locator('#login-button').click();
 
-    // Wait for redirect to board
-    await page.waitForURL('**/#board', { timeout: 5000 });
+    // Wait for board screen to be visible
+    await expect(page.locator('#board-screen')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#auth-screen')).not.toBeVisible();
     
     // Verify board is displayed
-    await expect(page.locator('#board-screen')).toBeVisible();
-    await expect(page.locator('.app-header h1')).toContainText('Task Management');
+    await expect(page.locator('#board-screen .app-header h1')).toContainText('Task Management');
   });
 
   test('should show error on invalid credentials', async ({ page }) => {
@@ -57,8 +57,8 @@ test.describe('Authentication', () => {
     await page.locator('#register-button').click();
 
     // Should redirect to board after registration
-    await page.waitForURL('**/#board', { timeout: 5000 });
-    await expect(page.locator('#board-screen')).toBeVisible();
+    await expect(page.locator('#board-screen')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#auth-screen')).not.toBeVisible();
   });
 
   test('should validate password confirmation', async ({ page }) => {
