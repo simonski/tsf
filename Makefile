@@ -1,4 +1,4 @@
-.PHONY: help build clean test test-go test-go-unit test-go-coverage task docker docker-up docker-down run-local
+.PHONY: help build clean test test-go test-go-unit test-go-coverage test-e2e test-e2e-setup task docker docker-up docker-down run-local
 
 help:
 	@echo "Task Management System - Makefile"
@@ -6,10 +6,13 @@ help:
 	@echo "Available targets:"
 	@echo "  build             - Build unified task binary"
 	@echo "  clean             - Remove build artifacts"
-	@echo "  test              - Run all tests"
+	@echo "  test              - Run all tests (Go + E2E)"
 	@echo "  test-go           - Run all Go tests"
 	@echo "  test-go-unit      - Run Go unit tests only"
 	@echo "  test-go-coverage  - Run Go tests with coverage report"
+	@echo "  test-e2e-setup    - Install Playwright dependencies"
+	@echo "  test-e2e          - Run Playwright E2E tests"
+	@echo "  test-e2e-ui       - Run Playwright tests in UI mode"
 	@echo "  task              - Build unified task binary"
 	@echo "  docker            - Build Docker image"
 	@echo "  docker-up         - Start all services with Docker Compose"
@@ -27,8 +30,9 @@ clean:
 	@echo "Cleaning build artifacts..."
 	@rm -f task
 	@rm -f coverage.out coverage.html
+	@rm -f task.test.db
 
-test: test-go
+test: test-go test-e2e
 
 test-go:
 	@echo "Running all Go tests..."
@@ -43,6 +47,21 @@ test-go-coverage:
 	@go test -v -coverprofile=coverage.out ./...
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
+
+test-e2e-setup:
+	@echo "Installing Playwright dependencies..."
+	@cd tests/e2e && npm install
+	@cd tests/e2e && npx playwright install
+
+test-e2e: build
+	@echo "Running Playwright E2E tests..."
+	@./task initdb -f task.test.db --force || true
+	@cd tests/e2e && npm test
+
+test-e2e-ui: build
+	@echo "Running Playwright E2E tests in UI mode..."
+	@./task initdb -f task.test.db --force || true
+	@cd tests/e2e && npm run test:ui
 
 docker:
 	@echo "Building Docker image..."

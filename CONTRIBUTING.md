@@ -99,6 +99,9 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ### Testing
 
+All changes must include appropriate tests:
+
+#### Unit Tests (Go)
 - Write unit tests for new functionality
 - Maintain or improve code coverage
 - Test edge cases and error conditions
@@ -130,6 +133,38 @@ func TestFeature(t *testing.T) {
         })
     }
 }
+```
+
+#### E2E Tests (Playwright)
+For frontend changes, add or update E2E tests:
+
+```bash
+# Setup (first time only)
+make test-e2e-setup
+
+# Run E2E tests
+make test-e2e
+
+# Interactive mode
+make test-e2e-ui
+```
+
+See [tests/e2e/README.md](tests/e2e/README.md) for detailed E2E testing guidelines.
+
+#### Running Tests
+
+```bash
+# All tests (Go + E2E)
+make test
+
+# Go tests only
+make test-go
+
+# E2E tests only
+make test-e2e
+
+# With coverage
+make test-go-coverage
 ```
 
 ### Commit Messages

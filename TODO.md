@@ -1,9 +1,11 @@
 # TODO
 
-- investigate playwright integration testing for frontend
-
 ## Recent Improvements (Feb 2026)
 
+- [x] Implemented Playwright E2E testing infrastructure
+- [x] Added authentication, navigation, and project management tests
+- [x] Updated Makefile with E2E test targets
+- [x] Created comprehensive E2E testing documentation
 - [x] Fixed passkey credential verification bug (challenge storage and retrieval)
 - [x] Implemented passkey (WebAuthn) authentication for passwordless login
 - [x] Added database schema for passkey credentials and sessions

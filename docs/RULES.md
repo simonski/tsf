@@ -33,7 +33,7 @@
 - don't compliment or apologise.  No hyperbole please.
 - any other generated documentation write to docs/generated/
 
-## Git, Testing
+## Git
 
 ### Branch Naming and Workflow
 
@@ -44,12 +44,15 @@
 - **ALWAYS** create feature branches from `develop`: `git checkout develop && git pull && git checkout -b feature/<name>`
 - merge hierarchy: feature → develop → main
 - only merge to develop once the feature is complete and all tests pass in the feature branch
+
+## Teesting
+
 - always run `make test` before committing
 - never commit code that does not pass tests
 - ensure the test suite passes before committing code
-- strive for comprehensive test coverage
-- do not merge if tests are failing
 - do not stop if a test fails - fix the failing test before you say you've finished
+- do not merge if tests are failing
+- strive for comprehensive test coverage
 
 ### Git Commands Reference
 ```bash

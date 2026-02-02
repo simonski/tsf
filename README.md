@@ -273,16 +273,25 @@ make clean
 ### Testing
 
 ```bash
-# Run all tests
+# Run all tests (Go + E2E)
 make test
 
-# Run specific package tests
-go test ./internal/db/...
+# Run Go tests only
+make test-go
+
+# Run E2E tests only (requires Node.js)
+make test-e2e-setup  # First time only
+make test-e2e
+
+# Run E2E tests interactively
+make test-e2e-ui
 
 # Run with coverage
 make test-go-coverage
 # Opens coverage.html in browser
 ```
+
+See [tests/e2e/README.md](tests/e2e/README.md) for more E2E testing details.
 
 ## Deployment
 
