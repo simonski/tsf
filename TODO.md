@@ -1,10 +1,10 @@
 # TODO
 
-- bug: creating passkey fails "failed to verify credential"
 - investigate playwright integration testing for frontend
 
 ## Recent Improvements (Feb 2026)
 
+- [x] Fixed passkey credential verification bug (challenge storage and retrieval)
 - [x] Implemented passkey (WebAuthn) authentication for passwordless login
 - [x] Added database schema for passkey credentials and sessions
 - [x] Created passkey registration and authentication endpoints
