@@ -3,6 +3,8 @@
 
 ## Fixed Bugs
 
+- [x] CLI uses single-hyphen options (-password, -url, -username) with --force as the only double-hyphen exception
+
 - [x] BUG website - cannot login as admin using generated password - FIXED: Updated frontend to use correct endpoint /api/v1/auth/me instead of /api/v1/users/me
 - [x] BUG website - cannot register says auth - FIXED: Updated frontend to use correct endpoint /api/v1/auth/register instead of /api/v1/users 
 
