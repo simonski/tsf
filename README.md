@@ -54,6 +54,19 @@ Task Management System is a comprehensive solution for managing software develop
 
 ## Quick Start
 
+### Automated Setup
+
+For the fastest setup, use the quickstart script:
+
+```bash
+./quickstart.sh
+```
+
+This will:
+1. Build the binary
+2. Initialize the database
+3. Display credentials and next steps
+
 ### Prerequisites
 
 - Go 1.23 or later (for building from source)

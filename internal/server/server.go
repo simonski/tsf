@@ -85,6 +85,9 @@ func (s *Server) Router() http.Handler {
 	// Orchestrator endpoints
 	mux.HandleFunc("POST /api/v1/orchestrator/heartbeat", s.withAuth(s.handleOrchestratorHeartbeat))
 
+	// Monitoring endpoints
+	mux.HandleFunc("GET /api/v1/heartbeats", s.withAuth(s.handleListHeartbeats))
+
 	// Config endpoints
 	mux.HandleFunc("GET /api/v1/config", s.withAuth(s.handleListConfig))
 	mux.HandleFunc("GET /api/v1/config/{key}", s.withAuth(s.handleGetConfig))

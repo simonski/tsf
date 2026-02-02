@@ -6,3 +6,8 @@ coverage.html
 .config/
 task
 task.db
+data/
+.env
+*.log
+tmp/
+dist/

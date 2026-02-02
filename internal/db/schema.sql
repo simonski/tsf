@@ -168,6 +168,22 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
 
+-- Heartbeats table: track worker and orchestrator activity
+CREATE TABLE IF NOT EXISTS heartbeats (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    task_id TEXT,
+    last_seen TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE SET NULL
+);
+
+CREATE UNIQUE INDEX idx_heartbeats_user ON heartbeats(user_id);
+CREATE INDEX idx_heartbeats_last_seen ON heartbeats(last_seen);
+CREATE INDEX idx_heartbeats_status ON heartbeats(status);
+
 -- Trigger to update updated_at timestamp
 CREATE TRIGGER IF NOT EXISTS update_users_timestamp 
     AFTER UPDATE ON users

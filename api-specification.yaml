@@ -273,6 +273,32 @@ components:
       required:
         - key
         - value
+        
+    Heartbeat:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        task_id:
+          type: string
+          format: uuid
+          nullable: true
+        last_seen:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - user_id
+        - status
+        - last_seen
 
 paths:
   /health:
@@ -1377,6 +1403,26 @@ paths:
       responses:
         '200':
           description: Heartbeat acknowledged
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /heartbeats:
+    get:
+      summary: List all heartbeats
+      description: Get heartbeat status of all workers and orchestrators for monitoring
+      responses:
+        '200':
+          description: List of heartbeats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Heartbeat'
         '401':
           description: Unauthorized
           content:

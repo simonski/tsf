@@ -38,48 +38,9 @@ Working
 -------
 
 As a WORKER starts the work, it updates the TASK to be Active
-As a WORKER completes its work, it updates the TASK 
+As a WORKER completes its work, it updates the TASK to be Idle
+
 One the WORKER completes, the TASK is then Idle and the ROLE is Unassigned.
 
+The OUTCOME of the work is stored in the history of the TASK.  The ORCHESTRATOR is then able to look at the HISTORY (which is all of the OUTCOMEs the TASK has had) to make a decision as to what the next step is for this TASK.
 
-A TASK and ROLE is then employed by a WORKER, where the taks becomes Active.
-
-
-
-
-A TASK progresses through different STAGES during its lifecycle.
-
-A STAGE will contain STATE of activity:
-    Stage: Design
-    State: Idle,Active,Success,Failure
-
-Stage: 
-    Design, 
-    Development, 
-    Test, 
-    Release
-Stage: Idle, ACtive, Succes, Failure
-
-An EPIC contains one or more STORIES.
-
-TASKS are worked on by a WORKER in a ROLE.
-
-A WORKER is a unit of COMPUTE with NO MOTIVATION
-
-A ROLE is the MOTIVATION: "As a Business Analyst..."
-A ROLE is the MOTIVATION: "As an Engineer"
-A ROLE is the MOTIVATION: "As a Product Owner"
-A ROLE is the MOTIVATION: "As a Release Manager"
-
-Each ROLE has its own MOTIVATION which is a set of RULES that it must apply to the TASK that it is working on.
-
-The WORKER is just the unit of compute dedicated to carrying out the TASK in a given ROLE.
-
-Once a WORKER concludes the TASK is complete - success or failure, then the TASK should be returned to the POOL allowing hte ORCHESTRATOR to decide what to do with the TASK.  
-
-It is NOT up to the WORKER to decide what to do next, only to explain the OUTCOME of the work carried out.  
-
-The ORCHESTRATOR then decides what the appropriate next STAGE is.  this means the ORCHESTRATOR could "Send back" the TASK to a previous ROLE, or "send on" the TASK to a subsequent ROLE.   In this way the 
-ORCHESTRATOR may descide "ok, engineering role is complete, send to qa".   But it may decide "ok, engineering failed complaining it is not clear, send back to the BA".
-
-In that manner the ORCHESTRATOR would then set the TARGET to be a particular ROLE and the STATUS to be IDLE, meaning the TASK is then in an "idle" pool with waiting to be assigned or claimed by a WORKER who is in the role previously assigned.

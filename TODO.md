@@ -1,5 +1,25 @@
 # TODO
 
+- add passkey authentication
+
+## Recent Improvements (Feb 2026)
+
+- [x] Verified argon2id is already implemented for secure password hashing (not bcrypt)
+- [x] Added .env.example file for easier environment setup
+- [x] Enhanced .gitignore with additional common patterns
+- [x] Created comprehensive CONTRIBUTING.md for contributors
+- [x] Created quickstart.sh script for easy onboarding
+- [x] Updated README with quickstart instructions
+- [x] Fixed go.mod indirect dependency issue for jwt package
+- [x] Implemented heartbeat storage in database with proper schema and methods
+- [x] Enhanced task assignment logic with intelligent priority-based selection
+- [x] Implemented role fetching and assignment for worker task requests
+- [x] Added GET /api/v1/heartbeats endpoint for monitoring worker/orchestrator health
+- [x] Updated API specification with heartbeats endpoint and schema
+- [x] Updated documentation to use single `task` binary consistently
+- [x] Replaced curl examples with CLI commands in documentation
+- [x] All tests passing, build successful
+
 ## Completed
 
 ✅ bug ux: the overview once loaded no longer shows hte panel when the hamburger is clicked

@@ -1,0 +1,87 @@
+#!/bin/bash
+# Quick Start Script for Task Management System
+
+set -e
+
+echo "==================================="
+echo "Task Management System - Quick Start"
+echo "==================================="
+echo ""
+
+# Check if Go is installed
+if ! command -v go &> /dev/null; then
+    echo "Error: Go is not installed. Please install Go 1.23 or later."
+    exit 1
+fi
+
+# Build the binary
+echo "1. Building task binary..."
+make build
+echo "✓ Build complete"
+echo ""
+
+# Setup database directory
+DB_DIR="$HOME/.config/task"
+DB_PATH="$DB_DIR/task.db"
+mkdir -p "$DB_DIR"
+
+# Initialize database
+echo "2. Initializing database at $DB_PATH..."
+./task initdb -f "$DB_PATH"
+echo "✓ Database initialized"
+echo ""
+
+# Display credentials
+echo "==================================="
+echo "Default Credentials:"
+echo "-----------------------------------"
+echo "Username: admin"
+echo "Password: admin123"
+echo "==================================="
+echo ""
+
+# Set environment variables
+export TASK_URL=http://localhost:8080
+export TASK_USERNAME=admin
+export TASK_PASSWORD=admin123
+
+echo "3. Environment variables set:"
+echo "   TASK_URL=$TASK_URL"
+echo "   TASK_USERNAME=$TASK_USERNAME"
+echo "   TASK_PASSWORD=***"
+echo ""
+
+# Instructions
+echo "==================================="
+echo "Next Steps:"
+echo "==================================="
+echo ""
+echo "To start the server:"
+echo "  ./task server -f $DB_PATH -port 8080"
+echo ""
+echo "In another terminal, test the CLI:"
+echo "  export TASK_URL=http://localhost:8080"
+echo "  export TASK_USERNAME=admin"
+echo "  export TASK_PASSWORD=admin123"
+echo ""
+echo "  ./task project list"
+echo "  ./task task create -title 'My First Task'"
+echo "  ./task task list"
+echo ""
+echo "Open web browser:"
+echo "  http://localhost:8080"
+echo ""
+echo "To start an orchestrator:"
+echo "  ./task orchestrator -url http://localhost:8080 -username orchestrator -password <password>"
+echo ""
+echo "To start a worker:"
+echo "  ./task worker -url http://localhost:8080 -username worker1 -password <password>"
+echo ""
+echo "For more information, see:"
+echo "  - README.md"
+echo "  - USER_GUIDE.md"
+echo "  - CONTRIBUTING.md"
+echo ""
+echo "==================================="
+echo "Setup Complete!"
+echo "==================================="
