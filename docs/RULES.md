@@ -15,6 +15,8 @@
 - Maintain a top-level USER_GUIDE.md that is to explain all use cases and functionality.   
 - Maintain a top-level README.md such that it explains in simple terms what the project is and how to build it.
 
+- NEVER write to /tmp
+
 - maintain the /TODO.md explaining the tasks carried out and to be carried out.  
   - Pick from the first TODO and work on that until it is complete
   - each todo should be in its own feature branch off develop

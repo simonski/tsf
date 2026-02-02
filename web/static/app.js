@@ -66,7 +66,7 @@ function hideError(elementId) {
 async function login(username, password) {
     try {
         state.credentials = { username, password };
-        const user = await apiRequest('/users/me');
+        const user = await apiRequest('/auth/me');
         state.currentUser = user;
         localStorage.setItem('credentials', JSON.stringify(state.credentials));
         await loadProjects();
@@ -80,7 +80,7 @@ async function login(username, password) {
 
 async function register(username, password) {
     try {
-        await apiRequest('/users', {
+        await apiRequest('/auth/register', {
             method: 'POST',
             body: JSON.stringify({
                 username: username,

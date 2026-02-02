@@ -1,5 +1,11 @@
 # TODO
 
+
+## Fixed Bugs
+
+- [x] BUG website - cannot login as admin using generated password - FIXED: Updated frontend to use correct endpoint /api/v1/auth/me instead of /api/v1/users/me
+- [x] BUG website - cannot register says auth - FIXED: Updated frontend to use correct endpoint /api/v1/auth/register instead of /api/v1/users 
+
 ## Completed Improvements
 
 - [x] `task` should render the whole usage
