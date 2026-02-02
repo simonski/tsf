@@ -8,6 +8,7 @@
 
 ## Completed Improvements
 
+- [x] `task initdb --force` - add --force option to rebuild database (removes and recreates)
 - [x] `task` should render the whole usage
 - [x] `make build` should build the binary to ./, not ./bin  
 - [x] `make` should print all make targets (implemented as `make help`)

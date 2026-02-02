@@ -17,6 +17,13 @@
 
 - NEVER write to /tmp
 
+- when starting a new feature
+  - create a feature branch from develop
+  - always use `make build` for building
+  - always use `make test` for testing
+  - push to the feature branch first
+  - only merge the feature is complete and once all tests pass via `make test`
+
 - maintain the /TODO.md explaining the tasks carried out and to be carried out.  
   - Pick from the first TODO and work on that until it is complete
   - each todo should be in its own feature branch off develop

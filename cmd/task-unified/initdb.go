@@ -11,6 +11,7 @@ import (
 
 func initDBMain() {
 	dbPath := flag.String("f", "", "Path to database file (default: ~/.config/task/task.db)")
+	force := flag.Bool("force", false, "Force rebuild database (removes existing database)")
 	flag.Parse()
 
 	finalPath := *dbPath
@@ -23,10 +24,19 @@ func initDBMain() {
 		finalPath = filepath.Join(home, ".config", "task", "task.db")
 	}
 
+	// Check if database exists
 	if _, err := os.Stat(finalPath); err == nil {
-		fmt.Fprintf(os.Stderr, "Error: Database already exists at %s\n", finalPath)
-		fmt.Fprintf(os.Stderr, "Please remove it first or specify a different path with -f\n")
-		os.Exit(1)
+		if !*force {
+			fmt.Fprintf(os.Stderr, "Error: Database already exists at %s\n", finalPath)
+			fmt.Fprintf(os.Stderr, "Please remove it first or use --force to rebuild\n")
+			os.Exit(1)
+		}
+		// Remove existing database
+		if err := os.Remove(finalPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Failed to remove existing database: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Removed existing database at %s\n", finalPath)
 	}
 
 	database, err := db.Open(finalPath)
