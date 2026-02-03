@@ -2,6 +2,7 @@
 
 ## Recent Improvements (Feb 2026)
 
+- [x] Upgraded Docker image to Go 1.24 (matches local Go 1.24.2)
 - [x] Implemented Playwright E2E testing infrastructure
 - [x] Added authentication, navigation, and project management tests
 - [x] Updated Makefile with E2E test targets
