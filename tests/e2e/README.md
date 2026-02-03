@@ -1,11 +1,11 @@
 # End-to-End Testing with Playwright
 
-This directory contains Playwright-based end-to-end tests for the Task Management System frontend.
+This directory contains Playwright-based end-to-end tests for the tsf frontend.
 
 ## Prerequisites
 
 - Node.js 18+ 
-- Task Management System built (`make build`)
+- tsf built (`make build`)
 
 ## Setup
 

@@ -6,7 +6,7 @@ test.describe('Authentication', () => {
   });
 
   test('should display login page', async ({ page }) => {
-    await expect(page.locator('#auth-screen h1')).toContainText('Task Management System');
+    await expect(page.locator('#auth-screen h1')).toContainText('tsf');
     await expect(page.locator('#login-form')).toBeVisible();
     await expect(page.locator('#login-username')).toBeVisible();
     await expect(page.locator('#login-password')).toBeVisible();
