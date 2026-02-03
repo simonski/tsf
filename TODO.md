@@ -2,6 +2,8 @@
 
 ## Recent Improvements (Feb 2026)
 
+- [x] Fixed Playwright navigation test class assertion (/active/ → /open/)
+
 - [x] Added comprehensive Requirements section to README with installation instructions
 - [x] Fixed `make test` hanging after Playwright tests complete (added proper cleanup)
 - [x] Upgraded Docker image to Go 1.24 (matches local Go 1.24.2)
