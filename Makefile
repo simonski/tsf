@@ -33,6 +33,7 @@ clean:
 	@rm -f task.test.db
 
 test: test-go test-e2e
+	@echo "All tests completed successfully!"
 
 test-go:
 	@echo "Running all Go tests..."
@@ -56,7 +57,8 @@ test-e2e-setup:
 test-e2e: build
 	@echo "Running Playwright E2E tests..."
 	@./task initdb -f task.test.db --force -password admin || true
-	@cd tests/e2e && npm test
+	@cd tests/e2e && npm test || (pkill -f 'task server' || true; exit 1)
+	@pkill -f 'task server' || true
 
 test-e2e-ui: build
 	@echo "Running Playwright E2E tests in UI mode..."
