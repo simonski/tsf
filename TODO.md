@@ -1,8 +1,13 @@
 # TODO
 
-- UX: add a "config" panel for admins only which displays all key/values and their description.  the admin should be able to treat this page as a CRUD page.  This should not be visible/accessible to users directly other than the admin.
-
 ## Recent Improvements (Feb 2026)
+
+- [x] **Config Admin Panel** - Added admin-only config panel with CRUD functionality (commit: 9b80b44)
+  - Added Config navigation link (visible to admin only)
+  - Created config screen with table display showing key/value/description
+  - Implemented add, edit, and delete operations for config entries
+  - Added CSS styling for config table
+  - Config panel is only accessible to users with username 'admin'
 
 - [x] Fixed Playwright navigation test class assertion (/active/ → /open/)
 
