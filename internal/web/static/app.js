@@ -191,6 +191,17 @@ async function login(username, password) {
         const user = await apiRequest('/auth/me');
         state.currentUser = user;
         localStorage.setItem('credentials', JSON.stringify(state.credentials));
+        
+        // Show/hide config link based on admin status
+        const configNav = document.getElementById('nav-config');
+        if (configNav) {
+            if (user.username === 'admin') {
+                configNav.classList.remove('hidden');
+            } else {
+                configNav.classList.add('hidden');
+            }
+        }
+        
         await loadProjects();
         showScreen('board-screen');
         hideError('auth-error');
@@ -589,6 +600,145 @@ function showSettings() {
     loadPasskeys();
 }
 
+// Config Management (Admin Only)
+async function showConfig() {
+    if (!state.currentUser || state.currentUser.username !== 'admin') {
+        await Dialog.error('Access Denied', 'Only administrators can access configuration.');
+        return;
+    }
+    showScreen('config-screen');
+    await loadConfigList();
+}
+
+async function loadConfigList() {
+    const tbody = document.getElementById('config-table-body');
+    hideError('config-error');
+    
+    try {
+        const configs = await apiRequest('/config');
+        
+        if (!configs || configs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="loading-row">No configuration entries found.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        configs.forEach(cfg => {
+            const row = document.createElement('tr');
+            
+            const keyCell = document.createElement('td');
+            keyCell.innerHTML = `<div class="config-key">${escapeHtml(cfg.key)}</div>`;
+            row.appendChild(keyCell);
+            
+            const valueCell = document.createElement('td');
+            valueCell.innerHTML = `<div class="config-value">${escapeHtml(cfg.value)}</div>`;
+            row.appendChild(valueCell);
+            
+            const descCell = document.createElement('td');
+            descCell.innerHTML = `<div class="config-description">${cfg.description ? escapeHtml(cfg.description) : '<em>No description</em>'}</div>`;
+            row.appendChild(descCell);
+            
+            const actionsCell = document.createElement('td');
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'config-actions';
+            
+            const editBtn = document.createElement('button');
+            editBtn.className = 'edit-config-btn';
+            editBtn.textContent = 'Edit';
+            editBtn.addEventListener('click', () => editConfig(cfg.key));
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-config-btn';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.addEventListener('click', () => deleteConfig(cfg.key));
+            
+            actionsDiv.appendChild(editBtn);
+            actionsDiv.appendChild(deleteBtn);
+            actionsCell.appendChild(actionsDiv);
+            row.appendChild(actionsCell);
+            
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        showError('config-error', error.message);
+        tbody.innerHTML = '<tr><td colspan="4" class="loading-row">Failed to load configuration.</td></tr>';
+    }
+}
+
+async function addConfig() {
+    const key = await Dialog.prompt('New Config Key', 'Enter the configuration key:');
+    if (!key || !key.trim()) return;
+    
+    const value = await Dialog.prompt('Config Value', 'Enter the value:');
+    if (!value || !value.trim()) return;
+    
+    const description = await Dialog.prompt('Description (Optional)', 'Enter a description:');
+    
+    try {
+        await apiRequest(`/config/${encodeURIComponent(key)}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                value: value,
+                description: description && description.trim() ? description : null
+            })
+        });
+        await Dialog.success('Config Added', `Configuration "${key}" has been created.`);
+        await loadConfigList();
+    } catch (error) {
+        await Dialog.error('Failed to Add Config', error.message);
+    }
+}
+
+async function editConfig(key) {
+    try {
+        const cfg = await apiRequest(`/config/${encodeURIComponent(key)}`);
+        
+        const newValue = await Dialog.prompt('Edit Value', `Enter new value for "${key}":`, cfg.value);
+        if (newValue === null) return;
+        
+        const newDescription = await Dialog.prompt('Edit Description', 'Enter new description (optional):', cfg.description || '');
+        
+        await apiRequest(`/config/${encodeURIComponent(key)}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                value: newValue,
+                description: newDescription && newDescription.trim() ? newDescription : null
+            })
+        });
+        await Dialog.success('Config Updated', `Configuration "${key}" has been updated.`);
+        await loadConfigList();
+    } catch (error) {
+        await Dialog.error('Failed to Update Config', error.message);
+    }
+}
+
+async function deleteConfig(key) {
+    const confirmed = await Dialog.confirm(
+        'Delete Configuration',
+        `Are you sure you want to delete the configuration key "${key}"?`,
+        'warning'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        await apiRequest(`/config/${encodeURIComponent(key)}`, {
+            method: 'DELETE'
+        });
+        await Dialog.success('Config Deleted', `Configuration "${key}" has been deleted.`);
+        await loadConfigList();
+    } catch (error) {
+        await Dialog.error('Failed to Delete Config', error.message);
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+
 // Projects
 async function loadProjects() {
     try {
@@ -928,6 +1078,12 @@ document.addEventListener('DOMContentLoaded', () => {
         Dialog.alert('Coming Soon', 'Users management will be available in a future update.', 'info');
     });
     
+    document.getElementById('nav-config').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeNav();
+        showConfig();
+    });
+    
     document.getElementById('nav-settings').addEventListener('click', (e) => {
         e.preventDefault();
         closeNav();
@@ -980,6 +1136,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 showError('passkey-error', error.message);
             }
         });
+    }
+    
+    // Config Screen
+    const configMenuToggle = document.getElementById('config-menu-toggle');
+    const configLogoutButton = document.getElementById('config-logout-button');
+    const addConfigButton = document.getElementById('add-config-button');
+    
+    if (configMenuToggle) {
+        configMenuToggle.addEventListener('click', openNav);
+    }
+    
+    if (configLogoutButton) {
+        configLogoutButton.addEventListener('click', logout);
+    }
+    
+    if (addConfigButton) {
+        addConfigButton.addEventListener('click', addConfig);
     }
     
     // Auto-login from localStorage

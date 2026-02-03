@@ -18,6 +18,7 @@
                 <li><a href="#" id="nav-overview" class="nav-link">Overview</a></li>
                 <li><a href="#" id="nav-projects" class="nav-link active">Projects</a></li>
                 <li><a href="#" id="nav-users" class="nav-link">Users</a></li>
+                <li><a href="#" id="nav-config" class="nav-link hidden">Config</a></li>
                 <li><a href="#" id="nav-settings" class="nav-link">Settings</a></li>
                 <li><a href="#" id="nav-logout" class="nav-link">Logout</a></li>
             </ul>
@@ -194,6 +195,43 @@
                     <button id="register-passkey-button" class="primary-button">Add New Passkey</button>
                     <div id="passkey-list" class="passkey-list"></div>
                     <div id="passkey-error" class="error-message hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Config Screen (Admin Only) -->
+        <div id="config-screen" class="screen hidden">
+            <header class="app-header">
+                <button id="config-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>Configuration</h1>
+                <div class="header-controls">
+                    <button id="add-config-button" class="primary-button">Add Config</button>
+                    <button id="config-logout-button" class="secondary-button">Logout</button>
+                </div>
+            </header>
+            
+            <div class="config-container">
+                <div id="config-error" class="error-message hidden"></div>
+                <div class="config-table-wrapper">
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Key</th>
+                                <th>Value</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="config-table-body">
+                            <tr>
+                                <td colspan="4" class="loading-row">Loading configuration...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

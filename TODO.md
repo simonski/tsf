@@ -1,5 +1,7 @@
 # TODO
 
+- UX: add a "config" panel for admins only which displays all key/values and their description.  the admin should be able to treat this page as a CRUD page.  This should not be visible/accessible to users directly other than the admin.
+
 ## Recent Improvements (Feb 2026)
 
 - [x] Fixed Playwright navigation test class assertion (/active/ → /open/)

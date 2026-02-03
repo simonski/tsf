@@ -884,3 +884,106 @@ body {
     opacity: 0.9;
     transform: translateY(-1px);
 }
+/* Config Screen */
+.config-container {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.config-table-wrapper {
+    background: var(--surface);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px var(--shadow);
+    overflow: hidden;
+}
+
+.config-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.config-table thead {
+    background: var(--background);
+    border-bottom: 2px solid var(--border);
+}
+
+.config-table th {
+    padding: 16px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.config-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+
+.config-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.config-table tbody tr:hover {
+    background: var(--background);
+}
+
+.loading-row {
+    text-align: center !important;
+    color: var(--text-secondary);
+    padding: 40px !important;
+}
+
+.config-key {
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--primary-color);
+    word-break: break-word;
+}
+
+.config-value {
+    font-family: 'Monaco', 'Courier New', monospace;
+    color: var(--text-primary);
+    max-width: 400px;
+    word-break: break-word;
+}
+
+.config-description {
+    color: var(--text-secondary);
+    font-size: 14px;
+    max-width: 500px;
+}
+
+.config-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.config-actions button {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.edit-config-btn {
+    background: var(--primary-color);
+    color: white;
+}
+
+.edit-config-btn:hover {
+    background: var(--primary-hover);
+}
+
+.delete-config-btn {
+    background: var(--danger);
+    color: white;
+}
+
+.delete-config-btn:hover {
+    opacity: 0.9;
+}
