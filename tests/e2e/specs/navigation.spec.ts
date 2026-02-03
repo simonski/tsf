@@ -12,15 +12,15 @@ test.describe('Navigation', () => {
 
   test('should open and close navigation menu', async ({ page }) => {
     // Menu should be hidden initially
-    await expect(page.locator('#side-nav')).not.toHaveClass(/active/);
+    await expect(page.locator('#side-nav')).not.toHaveClass(/open/);
 
     // Open menu
     await page.locator('#menu-toggle').click();
-    await expect(page.locator('#side-nav')).toHaveClass(/active/);
+    await expect(page.locator('#side-nav')).toHaveClass(/open/);
 
     // Close menu
     await page.locator('#nav-close').click();
-    await expect(page.locator('#side-nav')).not.toHaveClass(/active/);
+    await expect(page.locator('#side-nav')).not.toHaveClass(/open/);
   });
 
   test('should navigate to overview', async ({ page }) => {
