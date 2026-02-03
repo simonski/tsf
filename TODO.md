@@ -1,9 +1,8 @@
 # TODO
 
-- add a requirements/dependencies section in README including `brew install coreutils`, go, npm
-
 ## Recent Improvements (Feb 2026)
 
+- [x] Added comprehensive Requirements section to README with installation instructions
 - [x] Fixed `make test` hanging after Playwright tests complete (added proper cleanup)
 - [x] Upgraded Docker image to Go 1.24 (matches local Go 1.24.2)
 - [x] Implemented Playwright E2E testing infrastructure
