@@ -38,7 +38,7 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Println("Task Management System")
+	fmt.Println("tsf")
 	fmt.Printf("Version: %s\n\n", version)
 	fmt.Println("Usage: task <command> [options]")
 	fmt.Println()

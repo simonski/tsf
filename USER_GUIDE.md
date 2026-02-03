@@ -1,6 +1,6 @@
 # User Guide
 
-Complete guide to using the Task Management System.
+Complete guide to using tsf.
 
 ## Table of Contents
 
@@ -99,7 +99,7 @@ After logging in:
 
 ### Passkey Authentication (Passwordless Login)
 
-The Task Management System supports passkey authentication, providing a more secure and convenient login experience using your device's biometric sensors (fingerprint, face recognition) or hardware security keys.
+tsf supports passkey authentication, providing a more secure and convenient login experience using your device's biometric sensors (fingerprint, face recognition) or hardware security keys.
 
 #### Registering a Passkey
 

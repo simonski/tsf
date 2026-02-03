@@ -1,7 +1,7 @@
 .PHONY: help build clean test test-go test-go-unit test-go-coverage test-e2e test-e2e-setup task docker docker-up docker-down run-local
 
 help:
-	@echo "Task Management System - Makefile"
+	@echo "tsf - Makefile"
 	@echo ""
 	@echo "Available targets:"
 	@echo "  build             - Build unified task binary"

@@ -1,4 +1,4 @@
--- Task Management System Database Schema
+-- tsf Database Schema
 -- SQLite3 compatible
 
 -- Users table: humans, workers, and orchestrators

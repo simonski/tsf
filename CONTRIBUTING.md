@@ -1,4 +1,4 @@
-# Contributing to Task Management System
+# Contributing to tsf
 
 Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to the project.
 

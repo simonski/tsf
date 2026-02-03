@@ -1,10 +1,10 @@
 #!/bin/bash
-# Quick Start Script for Task Management System
+# Quick Start Script for tsf
 
 set -e
 
 echo "==================================="
-echo "Task Management System - Quick Start"
+echo "tsf - Quick Start"
 echo "==================================="
 echo ""
 

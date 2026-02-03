@@ -22,7 +22,7 @@ type Server struct {
 func New(database *db.DB) *Server {
 	// Initialize WebAuthn
 	wconfig := &webauthn.Config{
-		RPDisplayName:         "Task Management System",
+		RPDisplayName:         "tsf",
 		RPID:                  "localhost",
 		RPOrigins:             []string{"http://localhost:8080", "https://localhost:8080"},
 		AttestationPreference: protocol.PreferNoAttestation,
@@ -47,7 +47,7 @@ func (s *Server) SetWebFS(webFS embed.FS) {
 // SetWebAuthnConfig updates WebAuthn configuration with custom values
 func (s *Server) SetWebAuthnConfig(rpID string, rpOrigins []string) error {
 	wconfig := &webauthn.Config{
-		RPDisplayName:         "Task Management System",
+		RPDisplayName:         "tsf",
 		RPID:                  rpID,
 		RPOrigins:             rpOrigins,
 		AttestationPreference: protocol.PreferNoAttestation,

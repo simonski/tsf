@@ -1,10 +1,10 @@
 openapi: 3.0.3
 info:
-  title: Task Management System API
+  title: tsf API
   description: RESTful API for managing projects, tasks, roles, and workers in a kanban-style workflow system
   version: 1.0.0
   contact:
-    name: Task Management System
+    name: tsf
     
 servers:
   - url: https://localhost:8080/api/v1

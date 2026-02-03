@@ -1,10 +1,10 @@
-# Task Management System
+# tsf
 
 A kanban-style task management system designed for software development workflows, with support for human users and automated AI workers.
 
 ## Overview
 
-Task Management System is a comprehensive solution for managing software development tasks through a lifecycle approach. It provides:
+tsf is a comprehensive solution for managing software development tasks through a lifecycle approach. It provides:
 
 - **Web UI**: Modern, responsive kanban board interface
 - **REST API**: Complete OpenAPI-compatible REST API

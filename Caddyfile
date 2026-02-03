@@ -9,6 +9,6 @@
 	}
 
 	handle {
-		respond "Task Management System - Frontend to be added" 200
+		respond "tsf - Frontend to be added" 200
 	}
 }
