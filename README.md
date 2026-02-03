@@ -52,6 +52,36 @@ tsf is a comprehensive solution for managing software development tasks through 
 └─────────────┘
 ```
 
+## Requirements
+
+### For Building and Running
+
+- **Go 1.24+**: Required for building from source
+  - Install: `brew install go` (macOS) or [download from golang.org](https://golang.org/dl/)
+  
+- **SQLite**: Already included via CGO, no separate installation needed
+
+### For Development and Testing
+
+- **Node.js 18+**: Required for E2E tests
+  - Install: `brew install node` (macOS) or [download from nodejs.org](https://nodejs.org/)
+  
+- **Make**: Build automation
+  - Install: `brew install make` (macOS) or included in build-essential (Linux)
+
+### For Docker Deployment
+
+- **Docker**: Container runtime
+  - Install: [Docker Desktop](https://www.docker.com/products/docker-desktop)
+  
+- **Docker Compose**: Multi-container orchestration
+  - Included with Docker Desktop
+
+### Optional Tools
+
+- **GNU Coreutils**: Some scripts may benefit from GNU utilities on macOS
+  - Install: `brew install coreutils`
+
 ## Quick Start
 
 ### Automated Setup
@@ -66,11 +96,6 @@ This will:
 1. Build the binary
 2. Initialize the database
 3. Display credentials and next steps
-
-### Prerequisites
-
-- Go 1.23 or later (for building from source)
-- Docker and Docker Compose (for containerized deployment)
 
 ### Building from Source
 
