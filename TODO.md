@@ -3,6 +3,19 @@
 
 ## Recent Improvements (Feb 2026)
 
+- [x] **Terminal User Interface (TUI)** - Implemented interactive TUI for task management (commit: 62c1fc1)
+  - Added bubbletea, lipgloss, and bubbles dependencies for TUI framework
+  - Created internal/tui package with complete TUI implementation
+  - Implemented login screen with authentication
+  - Added main menu navigation with 6 primary sections (Projects, Tasks, Roles, Users, Config, Workers)
+  - Implemented full CRUD operations for all entities
+  - Added form handling with Tab/Shift-Tab navigation
+  - Implemented keyboard-driven navigation (arrows/WASD, space, esc)
+  - Added consistent styling with lipgloss
+  - Integrated with existing CLI client for API communication
+  - Added 'task tui' command to unified binary
+  - Updated README.md and DESIGN_TUI.md with comprehensive documentation
+
 - [x] **Config Admin Panel** - Added admin-only config panel with CRUD functionality (commit: 9b80b44)
   - Added Config navigation link (visible to admin only)
   - Created config screen with table display showing key/value/description
