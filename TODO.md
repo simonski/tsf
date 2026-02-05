@@ -1,5 +1,6 @@
 # TODO
 
+
 ## Recent Improvements (Feb 2026)
 
 - [x] **Config Admin Panel** - Added admin-only config panel with CRUD functionality (commit: 9b80b44)
@@ -11,7 +12,7 @@
 
 - [x] Fixed Playwright navigation test class assertion (/active/ → /open/)
 
-- [x] Added comprehensive Requirements section to README with installation instructions
+- [x] Added comprehensive Requirements section to README with installation instructions 
 - [x] Fixed `make test` hanging after Playwright tests complete (added proper cleanup)
 - [x] Upgraded Docker image to Go 1.24 (matches local Go 1.24.2)
 - [x] Implemented Playwright E2E testing infrastructure

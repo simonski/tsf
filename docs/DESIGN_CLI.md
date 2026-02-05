@@ -119,14 +119,17 @@ task user create -user_id X -description desc -type human|worker
 # claim a task (the current TASK_USERNAME)
 task claim X -task_id Y
 
-# request a task
-task request 
+# request a task 
+# normally the task chosed BY the orchestrator
+task request (-task_id Y)
 
 # free a task 
-task free X -task_id Y
+# normally the task is whatever is being worked on so auto-identified
+task free X (-task_id Y)
 
 # assign a task (to a specific user)
-task assign X -task_id Y -username XXXXX
+# normally this is not necessary as teh orchestrator will decide
+task assign -task_id Y -username XXXXX
 
 # view user history
 task user history -user_id X
