@@ -24,6 +24,8 @@ func main() {
 		runWorker(os.Args[2:])
 	case "initdb":
 		runInitDB(os.Args[2:])
+	case "tui", "-tui":
+		runTUI(os.Args[2:])
 	case "project", "task", "user", "role", "config":
 		runCLI(os.Args[1:])
 	case "version", "-v", "--version":
@@ -47,6 +49,7 @@ func printUsage() {
 	fmt.Println("  orchestrator  Start the orchestrator daemon")
 	fmt.Println("  worker        Start a worker daemon")
 	fmt.Println("  initdb        Initialize the database")
+	fmt.Println("  tui           Start the Terminal User Interface")
 	fmt.Println()
 	fmt.Println("  project       Manage projects")
 	fmt.Println("  task          Manage tasks")
@@ -83,4 +86,9 @@ func runInitDB(args []string) {
 func runCLI(args []string) {
 	os.Args = append([]string{"task"}, args...)
 	cliMain()
+}
+
+func runTUI(args []string) {
+	os.Args = append([]string{"task"}, args...)
+	tuiMain()
 }

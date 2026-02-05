@@ -7,6 +7,7 @@ DESIGN.md
 @docs/DESIGN_DATABASE.md, 
 @docs/DESIGN_FRONTEND.md, 
 @docs/DESIGN_CLI.md, 
+@docs/DESIGN_TUI.md, 
 @docs/DESIGN_DEPLOY.md
 @docs/ENTITY_ROLE.md
 @docs/ENTITY_PROJECT.md

@@ -22,6 +22,7 @@ This ROLE is provided to the WORKER by the SERVER whenever work is assigned.
 ## Usage
 
 # implicit TASK_URL= default server url 
+# uses the same TASK_USERNAME/TASK_PASSWORD variables as a human user.
 ./task worker -username USERNAME
 
 # explicit TASK_URL=https://localhost
@@ -39,7 +40,7 @@ Default config key/values in milliseconds:
 `worker.heartbeat`: 1000 
 `worker.idle`: 10000
 
-When a worker starts it is saying "I am ready for work, my name is `USERNAME`." 
+When a worker starts it is saying "I am ready for work, my name is `TASK_USERNAME`." 
 
-If a worker startswith the same name as a currently active worker, the server should reject the worker and the worker should exit error code 1.
+If a worker starts with the same name as a currently active worker, the server should reject the worker and the worker should exit error code 1.
 

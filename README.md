@@ -9,6 +9,7 @@ tsf is a comprehensive solution for managing software development tasks through 
 - **Web UI**: Modern, responsive kanban board interface
 - **REST API**: Complete OpenAPI-compatible REST API
 - **CLI**: Terminal-based task management
+- **TUI**: Interactive Terminal User Interface
 - **Worker System**: Automated task processing with LLM integration
 - **Orchestration**: Intelligent task routing and assignment
 - **Single Binary**: All components embedded in one Go binary
@@ -20,6 +21,7 @@ tsf is a comprehensive solution for managing software development tasks through 
 - **Kanban Workflow**: Visual board with To Do, In Progress, Blocked, and Completed columns
 - **Task Lifecycle**: Track task history and status changes
 - **Role-Based Context**: Define roles with specific instructions for AI workers
+- **Terminal User Interface (TUI)**: Interactive terminal-based UI for managing tasks
 - **Basic Authentication**: Secure access with username/password
 - **SQLite Database**: Lightweight, embedded database with no external dependencies
 - **Docker Support**: Easy deployment with Docker Compose
@@ -147,7 +149,33 @@ task project list
 task task create -title "Implement feature" -description "Add new functionality"
 
 # List tasks
-task task list
+tas
+
+### Using TUI (Terminal User Interface)
+
+```bash
+# Set credentials (optional, can also enter in TUI)
+export TASK_USERNAME=admin
+export TASK_PASSWORD=admin123
+
+# Launch TUI
+task tui
+
+# Or with connection options
+task tui -url http://localhost:8080
+```
+
+**TUI Navigation:**
+- Use arrow keys or WASD to navigate
+- Space or Enter to select
+- Backspace or Escape to go back
+- Press Ctrl-C twice to quit
+
+**TUI Features:**
+- Interactive login screen
+- Main menu with Projects, Tasks, Roles, Users, Config, and Workers
+- Full CRUD operations for all entities
+- Real-time worker monitoringk task list
 ```
 
 ## Components
