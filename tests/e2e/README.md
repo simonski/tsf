@@ -1,11 +1,11 @@
 # End-to-End Testing with Playwright
 
-This directory contains Playwright-based end-to-end tests for the tsf frontend.
+This directory contains Playwright-based end-to-end tests for the sf frontend.
 
 ## Prerequisites
 
 - Node.js 18+ 
-- tsf built (`make build`)
+- sf built (`make build`)
 
 ## Setup
 
@@ -83,8 +83,8 @@ tests/e2e/
 
 The tests are configured to:
 - Run on Chromium, Firefox, and WebKit
-- Automatically start the Task server on port 8080
-- Use a test database (`task.test.db`)
+- Automatically start the SF server on port 8080
+- Use a test database (`sf.test.db`)
 - Take screenshots on failure
 - Record traces on retry
 

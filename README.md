@@ -1,10 +1,10 @@
-# tsf
+# sf
 
 A kanban-style task management system designed for software development workflows, with support for human users and automated AI workers.
 
 ## Overview
 
-tsf is a comprehensive solution for managing software development tasks through a lifecycle approach. It provides:
+sf is a comprehensive solution for managing software development tasks through a lifecycle approach. It provides:
 
 - **Web UI**: Modern, responsive kanban board interface
 - **REST API**: Complete OpenAPI-compatible REST API
@@ -110,10 +110,10 @@ cd task
 make build
 
 # Initialize database
-task initdb -f ~/.config/task/task.db
+sf initdb -f ~/.config/sf/sf.db
 
 # Start server
-task server -f ~/.config/task/task.db -port 8080
+sf server -f ~/.config/sf/sf.db -port 8080
 ```
 
 The web UI will be available at http://localhost:8080
@@ -137,54 +137,62 @@ make docker-up
 ### Using CLI
 
 ```bash
-# Set server URL and credentials
-export TASK_SERVER_URL=http://localhost:8080
-export TASK_USERNAME=admin
-export TASK_PASSWORD=admin123
+# Login (saves credentials locally)
+sf login
+# Enter username and password when prompted
+
+# Or register a new account
+sf register
+
+# Or set credentials via environment
+export SF_SERVER_URL=http://localhost:8080
+export SF_USERNAME=admin
+export SF_PASSWORD=admin123
 
 # List projects
-task project list
+sf project list
 
 # Create a task
-task task create -title "Implement feature" -description "Add new functionality"
+sf task create -title "Implement feature" -description "Add new functionality"
 
 # List tasks
-tas
+sf task list
 
 ### Using TUI (Terminal User Interface)
 
 ```bash
 # Set credentials (optional, can also enter in TUI)
-export TASK_USERNAME=admin
-export TASK_PASSWORD=admin123
+export SF_USERNAME=admin
+export SF_PASSWORD=admin123
 
 # Launch TUI
-task tui
+sf tui
 
 # Or with connection options
-task tui -url http://localhost:8080
+sf tui -url http://localhost:8080
 ```
 
 **TUI Navigation:**
-- Use arrow keys or WASD to navigate
-- Space or Enter to select
+- Use arrow keys or Tab to navigate
+- Enter to select/submit
 - Backspace or Escape to go back
 - Press Ctrl-C twice to quit
 
 **TUI Features:**
-- Interactive login screen
+- Interactive login screen with registration option (Ctrl+R)
+- User registration with password confirmation
 - Main menu with Projects, Tasks, Roles, Users, Config, and Workers
 - Full CRUD operations for all entities
-- Real-time worker monitoringk task list
+- Real-time worker monitoring
 ```
 
 ## Components
 
-The `task` binary provides multiple subcommands for different operational modes:
+The `sf` binary provides multiple subcommands for different operational modes:
 
 ### Server
 
-The server mode (`task server`) provides:
+The server mode (`sf server`) provides:
 - RESTful API endpoints (see [API Specification](api-specification.yaml))
 - Static file serving for web UI
 - Basic authentication middleware
@@ -192,7 +200,7 @@ The server mode (`task server`) provides:
 
 **Usage:**
 ```bash
-task server -f <database-path> -port <port>
+sf server -f <database-path> -port <port>
 ```
 
 ### Orchestrator
@@ -205,7 +213,7 @@ The orchestrator:
 
 **Usage:**
 ```bash
-task orchestrator -url <server-url> -username <username> -password <password>
+sf orchestrator -url <server-url> -username <username> -password <password>
 ```
 
 ### Worker
@@ -218,7 +226,7 @@ Workers:
 
 **Usage:**
 ```bash
-task worker -url <server-url> -username <username> -password <password>
+sf worker -url <server-url> -username <username> -password <password>
 ```
 
 ### CLI
@@ -237,16 +245,16 @@ Configuration is stored in the database and managed via CLI:
 
 ```bash
 # List all configuration
-task config list
+sf config list
 
 # Set configuration value
-task config set -key orchestrator.interval -val 60s
+sf config set -key orchestrator.interval -val 60s
 
 # Get configuration value  
-task config get -key orchestrator.interval
+sf config get -key orchestrator.interval
 
 # Delete configuration
-task config delete -key orchestrator.interval
+sf config delete -key orchestrator.interval
 ```
 
 Common configuration keys:
@@ -356,7 +364,7 @@ make run-local
 
 This will:
 1. Build all binaries
-2. Initialize database at `~/.config/task/task.db`
+2. Initialize database at `~/.config/sf/sf.db`
 3. Start server on port 8080
 
 ### Docker Deployment

@@ -1,21 +1,29 @@
 DESIGN.md
 
-- the project name is `task`
-@docs/DESIGN_SERVER.md, 
-@docs/DESIGN_ORCHESTRATOR.md, 
-@docs/DESIGN_WORKER.md, 
+- the project name is `sf`
+
+@docs/ESSAY.md, 
+@docs/DESIGN_CLI.md, 
 @docs/DESIGN_DATABASE.md, 
 @docs/DESIGN_FRONTEND.md, 
-@docs/DESIGN_CLI.md, 
-@docs/DESIGN_TUI.md, 
-@docs/DESIGN_DEPLOY.md
-@docs/ENTITY_ROLE.md
+@docs/DESIGN_ORCHESTRATOR.md, 
+@docs/DESIGN_SERVER.md, 
+<!-- // @docs/DESIGN_TUI.md,  -->
+@docs/DESIGN_WORKER.md, 
+@docs/ENTITY.md
 @docs/ENTITY_PROJECT.md
 @docs/ENTITY_TASK.md
+@docs/ENTITY_ROLE.md
 
 ## Vision
 
 This is a todo list that acts like a kanban for software development.
+
+The contents of the todo list are then assigned to WORKERs by wn ORCHESTRATOR.
+
+The intent is to reduce the amount of programming a user does directly by outsourcing to agents.  
+
+The approach is to supply small pieces of work (tickets creating in the todo list) with a constrained set of goals and roles.
 
 ## Breakdown of Work
 
@@ -27,14 +35,14 @@ That is, there is an
 
     IDEA -> DESIGN -> IMPLEMENTATION -> TESTING -> OUTPUT
 
-Where each discrete step occurs back-and-forth in a sequence of iteration.
+Where each discrete step occurs back-and-forth in a sequence of iteration.  
 
-A VISION (a very high level statement with a desired outcome) is decomposed into GOALS or OBJECTIVES.  These GOALS or OBJETIVES are further decomposed to OKRs, KPIs, EPICS, TASKs, subdividing as much as is necessary so that:
+CONSENSUS is the vital ingredient where a VISION (a very high level statement with a desired outcome) is decomposed into GOALS or OBJECTIVES.  These GOALS or OBJETIVES are further decomposed to OKRs, KPIs, EPICS, TASKs, subdividing as much as is necessary so that:
 
 - the concept is understood
 - the outcome can be agreed as SUCCESS or FAILURE (meets or does not meet the objective)
 
-Each action is carried out by an AGENT (A software process run in an LLM) which takes the prior OUTPUT as the INPUT along with their ROLE.  In this way we can see a series of AGENTS like
+Each action is carried out by an AGENT (A software process run in an LLM) which takes the prior OUTPUT as the INPUT along with their ROLE.  
 
 Examples of WORK could be:
     - writing a specification
@@ -50,6 +58,11 @@ Examples of WORK could be:
 
 The idea is that an iterative engineering chain of responsibility is created - a software factory - where the goal is to create software solutions based on english language descriptions.
 
+CONSENSUS based ITERATION
+
+In this way the iteration is NONLINEAR and this is VERY IMPORTANT to understand - you cannot predict which ROLE will next receive WORK once it is freed.   All roles in the workflow
+will ultimately need to achieve consensus - which is to say until everyone agrees, the WORK is not complete.
+
 ## Technology Components
 
 - FRONTEND browser frontend (DESIGN_FRONTEND.md) (lightweight css/js/html website that renders a kanban board of work).  embedded in go:embed single binary
@@ -59,7 +72,7 @@ The idea is that an iterative engineering chain of responsibility is created - a
 - DATABASE (DESIGN_DATABASE) a sqlite database that retains all state.  accessible only via the SERVER
 - WORKER a software process that requests/receives WORK from the server and performs the work (normally delegating to an LLM)
 
-Note: the entire output is a single go binary, "task" which contains the FRONTEND, CLI and SERVER, it can then be used in any mode the user wants.
+Note: the entire output is a single go binary, "sf" which contains all components - the FRONTEND, CLI and SERVER, the ORCHESTRATOR, it can then be used in any mode the user wants.
 
 The SERVER serves both the FRONTEND and the APIs.
 
@@ -80,5 +93,8 @@ A USERS table should exist that contains
     type (human, worker, orchestrator)
     password
 
-All requests to the SERVER must be authenticated using Basic Auth.  
+All requests to the SERVER must be authenticated using Basic Auth.
+
+A human can login using Passkeys if they wish.
+An agent can authenticate using JWT or username/password.
 

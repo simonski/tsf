@@ -9,21 +9,21 @@ The orchestrator NEVER touches the database - it calls the SERVER which is the o
 # run the orchestrator
 
 ```bash
-# Runs and REGISTERs the orchestrator on the TASK_URL server
-# implicit TASK_URL= default server url 
-./task orchestrator
+# Runs and REGISTERs the orchestrator on the SF_URL server
+# implicit SF_URL= default server url 
+./sf orchestrator
 ```
 
 ```bash
 # REGISTERs the orchestrator on the specified -url
-./task orchestrator -url https://localhost:8080
+./sf orchestrator -url https://localhost:8080
 ```
 
 ## Hearbeat
 
 The orchestrator periodically issues a heartbeat to the SERVER to indicate it is running.  If the orchestrator does not heartbeat, the server will move the orchestrator to an IDLE state. If it heartbeats, it will persist the last active satae and designate the orchestrator as ACTIVE.  
 
-These values are configurable via a `./task config key value` admin-only call.
+These values are configurable via a `./sf config key value` admin-only call.
 
 Default config key/values in milliseconds:
 `orchestrator.heartbeat`: 1000 
@@ -32,7 +32,7 @@ Default config key/values in milliseconds:
 The orchestrator can also be run "within" the server process rather than standalone if it is passed during the start of the server command:
 
 ```bash
-./task server orchestrator
+./sf server orchestrator
 ```
 
 This is just so it is easier to run fewer components.

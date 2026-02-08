@@ -6,7 +6,7 @@ services:
     volumes:
       - ./data:/data
     environment:
-      - TASK_DB_PATH=/data/task.db
+      - SF_DB_PATH=/data/task.db
     command: /app/task initdb -f /data/task.db
     restart: "no"
 
@@ -17,7 +17,7 @@ services:
     volumes:
       - ./data:/data
     environment:
-      - TASK_DB_PATH=/data/task.db
+      - SF_DB_PATH=/data/task.db
     command: /app/task server -f /data/task.db -port 8080
     depends_on:
       - initdb
@@ -26,9 +26,9 @@ services:
   orchestrator:
     build: .
     environment:
-      - TASK_URL=http://server:8080
-      - TASK_USERNAME=orchestrator
-      - TASK_PASSWORD=${ORCHESTRATOR_PASSWORD}
+      - SF_URL=http://server:8080
+      - SF_USERNAME=orchestrator
+      - SF_PASSWORD=${ORCHESTRATOR_PASSWORD}
     command: /app/task orchestrator -url http://server:8080
     depends_on:
       - server

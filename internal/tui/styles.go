@@ -78,6 +78,12 @@ var (
 	statusInactiveStyle = lipgloss.NewStyle().
 				Foreground(errorColor).
 				Bold(true)
+
+	// Error message style
+	errorStyle = lipgloss.NewStyle().
+			Foreground(errorColor).
+			Bold(true).
+			Padding(1)
 )
 
 // Common help text

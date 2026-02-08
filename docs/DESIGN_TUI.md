@@ -4,7 +4,7 @@ A bubbletea/lipgloss-infused TUI (Terminal User Interface) that allows a user to
 
 ## Usage
 
-`task tui` will invoke the TUI.
+`sf tui` will invoke the TUI.
 
 It should use all the same features as the CLI/Server.
 
@@ -30,8 +30,9 @@ The TUI is organized into several components:
 
 1. **Main Model** (`tui.go`) - Coordinates view switching and manages sub-models
 2. **Login Screen** (`login.go`) - Authentication form
-3. **Main Menu** (`mainmenu.go`) - Primary navigation hub
-4. **Entity Views** - List and form views for each entity type:
+3. **Registration Screen** (`register.go`) - User registration form
+4. **Main Menu** (`mainmenu.go`) - Primary navigation hub
+5. **Entity Views** - List and form views for each entity type:
    - Projects (`projects.go`, `project_form.go`)
    - Tasks (`tasks.go`, `task_form.go`)
    - Roles (`roles.go`, `role_form.go`)
@@ -43,6 +44,10 @@ The TUI is organized into several components:
 
 #### Authentication
 - Login screen with username/password inputs
+- Registration screen with username, password, and password confirmation
+- Switch between login and register with Ctrl+R
+- Password validation (minimum 8 characters, must match confirmation)
+- Automatic login after successful registration
 - Credentials can be pre-filled from environment variables
 - API authentication test before proceeding to main menu
 

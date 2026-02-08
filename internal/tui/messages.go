@@ -3,6 +3,15 @@ package tui
 // authSuccessMsg is sent when authentication succeeds
 type authSuccessMsg struct{}
 
+// registrationSuccessMsg is sent when registration succeeds
+type registrationSuccessMsg struct{}
+
+// switchToLoginMsg is sent to switch from register to login view
+type switchToLoginMsg struct{}
+
+// switchToRegisterMsg is sent to switch from login to register view
+type switchToRegisterMsg struct{}
+
 // changeViewMsg is sent to switch views
 type changeViewMsg struct {
 	view ViewType

@@ -1,6 +1,6 @@
 The SERVER serves both the FRONTEND and the APIs.
 
-The APIs are restful openAPI spec compatible.
+The APIs are restful openAPI spec compatible and include a websocket for realtime access to current WORK state.
 
 The server is really only a CRUD manager of state.  It will not make many "decisions" on what to do.
 
@@ -16,10 +16,10 @@ Versioning: use an openAPI /v1/ style to start with.
 
 ```bash
 # runs the server on the default server port
-./task server
+./sf server
 
 # runs the server on the default server port, with explicit database
-./task server -f mydb.db
+./sf server -f mydb.db
 ```
 
 ## OpenAPI
@@ -28,10 +28,10 @@ Each endpoint must have a fully documentated section in the OpenAPI specificatio
 
 ## Authentication
 
-All calls to the server MUST be Basic-Auth.   
+All calls to the server MUST be Basic-Auth.
 
 The credentials must be encrypted - argon2id.   
 
 The server will maintain a USERS table which will contain all details of each type of user.
 
-Password reset is available to the admin-only via `./task reset-password -username X -password Y`
+Password reset is available to the admin-only via `./sf reset-password -username X -password Y`

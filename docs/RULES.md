@@ -1,14 +1,17 @@
 ## Workflow Commands
 
-**@XXX** means "read this file XXX"
+### "review"
+Typing "review" means read all the documentation and make suggestions on the overall design, call out contraditions and generally assess and ask questions but do not write any files.
 
-### Continue Command
+### "continue"
+
 Typing **"continue"** means reread the following files to continue creating and extending the project:
 - `@docs/RULES.md`
 - `@docs/DESIGN.md`
 - `@/TODO.md`
 
-### Propose/Suggest/Next Commands
+### "suggest"
+
 Typing **"propose"**, **"suggest"**, or **"next"** means reread the following files to suggest what should be done next, but **DO NOT DO** the work:
 - `@docs/RULES.md`
 - `@docs/DESIGN.md`
@@ -22,6 +25,7 @@ Typing **"propose"**, **"suggest"**, or **"next"** means reread the following fi
 - `TODO.md` - Explains tasks carried out and to be carried out
 
 **Generated documentation:**
+
 - Write generated markdown to `docs/generated/`
 - Exception: `README.md` and `TODO.md` remain at project root
 

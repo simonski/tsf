@@ -1,5 +1,11 @@
 # TODO
 
+- implement the API and client calls to manage ALL Entities via CRUD calls.  Once this is complete we can say the entire ticketing and entity management system is finished as there will be
+  - openAPI APIs implemented
+  - database schemas completed
+  - client API calls via the terminal testable
+Once this is complete we can then implement WORKERS and the ORCHESTRATOR
+
 
 ## Recent Improvements (Feb 2026)
 
@@ -13,7 +19,7 @@
   - Implemented keyboard-driven navigation (arrows/WASD, space, esc)
   - Added consistent styling with lipgloss
   - Integrated with existing CLI client for API communication
-  - Added 'task tui' command to unified binary
+  - Added 'sf tui' command to unified binary
   - Updated README.md and DESIGN_TUI.md with comprehensive documentation
 
 - [x] **Config Admin Panel** - Added admin-only config panel with CRUD functionality (commit: 9b80b44)
@@ -78,18 +84,18 @@
 
 ## Completed Improvements
 
-- [x] Add `-password` option to `task initdb` to set custom admin password
+- [x] Add `-password` option to `sf initdb` to set custom admin password
 - [x] Create sliding panel navigation with hamburger menu (projects, users, settings, logout)
-- [x] `task initdb --force` - add --force option to rebuild database (removes and recreates)
+- [x] `sf initdb --force` - add --force option to rebuild database (removes and recreates)
 - [x] `task` should render the whole usage
 - [x] `make build` should build the binary to ./, not ./bin  
 - [x] `make` should print all make targets (implemented as `make help`)
 - [x] merge all binaries to be a SINGLE binary `task` with commands that run them
-    - `task server` - Start HTTP server
-    - `task orchestrator` - Start orchestrator daemon
+    - `sf server` - Start HTTP server
+    - `sf orchestrator` - Start orchestrator daemon
     - `task (client)` - CLI commands (scaffolded)
-    - `task initdb` - Initialize database
-    - `task worker` - Start worker daemon
+    - `sf initdb` - Initialize database
+    - `sf worker` - Start worker daemon
 - [x] implement and verify the -url option in the CLI calls, the -json option too
 - [x] implement 100% of the CLI methods
 - [x] BUG FIX: the server now correctly renders the web UI at http://localhost:8080

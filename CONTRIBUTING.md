@@ -1,4 +1,4 @@
-# Contributing to tsf
+# Contributing to sf
 
 Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to the project.
 
@@ -31,7 +31,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 4. **Initialize the database**
    ```bash
-   ./task initdb -f ~/.config/task/task.db
+   ./sf initdb -f ~/.config/sf/sf.db
    ```
 
 5. **Run tests**
@@ -86,7 +86,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 5. **Build and test manually**
    ```bash
    make build
-   ./task server -f test.db -port 8080
+   ./sf server -f test.db -port 8080
    ```
 
 ### Code Style
@@ -224,17 +224,17 @@ If you're modifying the API:
 
 ```bash
 # Run server
-./task server -f ~/.config/task/task.db -port 8080
+./sf server -f ~/.config/sf/sf.db -port 8080
 
 # Run orchestrator (in another terminal)
-export TASK_USERNAME=orchestrator
-export TASK_PASSWORD=your-password
-./task orchestrator -url http://localhost:8080
+export SF_USERNAME=orchestrator
+export SF_PASSWORD=your-password
+./sf orchestrator -url http://localhost:8080
 
 # Run worker (in another terminal)
-export TASK_USERNAME=worker1
-export TASK_PASSWORD=your-password
-./task worker -url http://localhost:8080
+export SF_USERNAME=worker1
+export SF_PASSWORD=your-password
+./sf worker -url http://localhost:8080
 ```
 
 ### Docker Development

@@ -13,6 +13,7 @@ type ViewType int
 
 const (
 	ViewLogin ViewType = iota
+	ViewRegister
 	ViewMainMenu
 	ViewProjects
 	ViewProjectForm
@@ -38,19 +39,20 @@ type Model struct {
 	quitCtrl int // Track CTRL-C presses
 
 	// Sub-models
-	loginModel      loginModel
-	mainMenuModel   mainMenuModel
-	projectsModel   projectsModel
+	loginModel       loginModel
+	registerModel    registerModel
+	mainMenuModel    mainMenuModel
+	projectsModel    projectsModel
 	projectFormModel projectFormModel
-	tasksModel      tasksModel
-	taskFormModel   taskFormModel
-	rolesModel      rolesModel
-	roleFormModel   roleFormModel
-	usersModel      usersModel
-	userFormModel   userFormModel
-	configModel     configModel
-	configFormModel configFormModel
-	workersModel    workersModel
+	tasksModel       tasksModel
+	taskFormModel    taskFormModel
+	rolesModel       rolesModel
+	roleFormModel    roleFormModel
+	usersModel       usersModel
+	userFormModel    userFormModel
+	configModel      configModel
+	configFormModel  configFormModel
+	workersModel     workersModel
 }
 
 // New creates a new TUI model
@@ -93,6 +95,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mainMenuModel = newMainMenuModel()
 		return m, nil
 
+	case registrationSuccessMsg:
+		// After successful registration, auto-login
+		m.client = cli.NewClient(m.config)
+		m.view = ViewMainMenu
+		m.mainMenuModel = newMainMenuModel()
+		return m, nil
+
+	case switchToRegisterMsg:
+		m.view = ViewRegister
+		m.registerModel = newRegisterModel(m.config)
+		m.err = nil
+		return m, nil
+
+	case switchToLoginMsg:
+		m.view = ViewLogin
+		m.loginModel = newLoginModel(m.config)
+		m.err = nil
+		return m, nil
+
 	case changeViewMsg:
 		return m.changeView(msg.view, msg.data)
 
@@ -126,6 +147,8 @@ func (m *Model) View() string {
 	switch m.view {
 	case ViewLogin:
 		content = m.loginModel.View(m.width, m.height)
+	case ViewRegister:
+		content = m.registerModel.View(m.width, m.height)
 	case ViewMainMenu:
 		content = m.mainMenuModel.View(m.width, m.height)
 	case ViewProjects:
@@ -167,6 +190,8 @@ func (m *Model) updateSubModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.view {
 	case ViewLogin:
 		m.loginModel, cmd = m.loginModel.Update(msg)
+	case ViewRegister:
+		m.registerModel, cmd = m.registerModel.Update(msg)
 	case ViewMainMenu:
 		m.mainMenuModel, cmd = m.mainMenuModel.Update(msg)
 	case ViewProjects:

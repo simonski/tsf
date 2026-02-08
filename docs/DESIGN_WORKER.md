@@ -1,11 +1,11 @@
-A CLI invokation of the `task` binary that that runs as a daemon seeking wrk from the server.
+A CLI invocation of the `task` binary that that runs as a daemon seeking WORK from the server.
 
 Effectively a for-loop that 
-    - requests work from the server
-    - performs teh work (delegating to an LLM)
+    - requests work from the server (where it is calling the serfver with the WORKER_ID)
+    - performs the work (delegating to an LLM)
     - commits the work once complete, updating the server
-    - waits for more work from the server (using -wait N seconds) or the wait period is set by he server once registered as a server config value.
-    - periodically heartbeats its status back to the server.
+    - waits for more work from the server (using -wait N seconds) or the wait period is set by the server once registered as a server config value.
+    - periodically heartbeats its status back to the server, where the server responds with OK and any config necessary)
 
 ## Registration
 
@@ -21,16 +21,16 @@ This ROLE is provided to the WORKER by the SERVER whenever work is assigned.
 
 ## Usage
 
-# implicit TASK_URL= default server url 
-# uses the same TASK_USERNAME/TASK_PASSWORD variables as a human user.
-./task worker -username USERNAME
+# implicit SF_URL= default server url 
+# uses the same SF_USERNAME/SF_PASSWORD variables as a human user.
+./sf worker -username USERNAME
 
-# explicit TASK_URL=https://localhost
-export TASK_URL=https://localhost
-./task worker -username USERNAME
+# explicit SF_URL=https://localhost
+export SF_URL=https://localhost
+./sf worker -username USERNAME
 
 # override url with passed value
-./task worker -username USERNAME -url https://server:4333
+./sf worker -username USERNAME -url https://server:4333
 
 ## Heartbeat
 
@@ -40,7 +40,7 @@ Default config key/values in milliseconds:
 `worker.heartbeat`: 1000 
 `worker.idle`: 10000
 
-When a worker starts it is saying "I am ready for work, my name is `TASK_USERNAME`." 
+When a worker starts it is saying "I am ready for work, my name is `SF_USERNAME`." 
 
 If a worker starts with the same name as a currently active worker, the server should reject the worker and the worker should exit error code 1.
 

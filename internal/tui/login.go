@@ -10,10 +10,10 @@ import (
 )
 
 type loginModel struct {
-	config       *cli.Config
-	usernameInput textinput.Model
-	passwordInput textinput.Model
-	focusIndex   int
+	config         *cli.Config
+	usernameInput  textinput.Model
+	passwordInput  textinput.Model
+	focusIndex     int
 	authenticating bool
 }
 
@@ -56,12 +56,19 @@ func (m loginModel) Update(msg tea.Msg) (loginModel, tea.Cmd) {
 		switch msg.String() {
 		case "enter":
 			return m.submit()
-		case "tab", "down", "s":
+		case "tab", "down":
 			m.focusIndex = (m.focusIndex + 1) % 2
 			return m.updateFocus()
-		case "shift+tab", "up", "w":
+		case "shift+tab", "up":
 			m.focusIndex = (m.focusIndex - 1 + 2) % 2
 			return m.updateFocus()
+		case "ctrl+r", "r":
+			// Switch to register view (only when not typing)
+			if m.focusIndex != 0 && m.usernameInput.Value() == "" {
+				return m, func() tea.Msg {
+					return switchToRegisterMsg{}
+				}
+			}
 		case "esc":
 			return m, tea.Quit
 		}
@@ -140,7 +147,7 @@ func (m loginModel) View(width, height int) string {
 	if m.authenticating {
 		b.WriteString(subtitleStyle.Render("Authenticating..."))
 	} else {
-		help := helpStyle.Render("Tab: Switch fields • Enter: Login • Esc: Quit")
+		help := helpStyle.Render("Tab: Switch fields • Enter: Login • Ctrl+R: Register • Esc: Quit")
 		b.WriteString(help)
 	}
 

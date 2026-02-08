@@ -1,10 +1,12 @@
-The terminal/tui tool that allows you to interact with the server
+The terminal/tui tool that allows 
+    - an admin user to interact with the server 
+    - a worker to be assigned work from the server
 
 ### Identity
 
 The terminal client may used by either the HUMAN, WORKER or ORCHESTRATOR from a shell.
 
-TASK_USERNAME/TASK_PASSWORD must be provided, either environment variables or options in the commandline if the call requires authentication.  
+SF_USERNAME/SF_PASSWORD must be provided, either environment variables or options in the commandline if the call requires authentication.  
 
 # Authentication
 
@@ -13,9 +15,9 @@ All calls requiring authentication to the server MUST be Basic-Auth.
 The user can provides this using environment variables:
 
 ```bash
-export TASK_USERNAME=XXX
-export TASK_PASSWORD=YYY
-task <command>
+export SF_USERNAME=XXX
+export SF_PASSWORD=YYY
+sf <command>
 ```
 
 Note: the CLI never touches the database directly - it ALWAYS routes throught the SERVER.
@@ -24,40 +26,23 @@ Note: the CLI never touches the database directly - it ALWAYS routes throught th
 
 Use single-hyphen for options, never double.
 
-TASK_URL or -url points to the SERVER
+SF_URL or -url points to the SERVER
 
 Option `-json` in any command in CLI prints to STDOUT the response in pretty-printed JSON, otherwse print human-readable
 
-`$TASK_URL` or `-url` specify the location of the TASK_SERVER - which is normally https://localhost:8080
+`$SF_URL` or `-url` specify the location of the SF_SERVER - which is normally https://localhost:8080
 
 # Commands
 
 ```bash
-task register -username XXX -password YYYY -type human|worker
+# register a new user
+sf register -username XXX -password YYYY (-email email@place.com) -type human|worker
 ```
 
-## Admin-Only Commands
-
-These commands demand that the TASK_USERNAME is the authenticated admin user.
-
-Enable/Disable a user.  A user disabled will not be permitted by the server to carry out any actions - a 401 will be sent.   
-
 ```bash
-task enable-user -username XXXX
-task disable-user -username XXXX
-```
-
-### Configuration Commands
-
-The admin can set configuration values
-
-```bash
-# set a configuration value
-task config-set -key KEY -value VALUE
-
-# delete a configuration value
-task config-rm -key KEY
-
+# login (stores session token in ~/.config/sf/config.json)
+$SF_PASSWORD=xxxx
+sf login -username XXX (-password YYYY)
 ```
 
 
@@ -65,74 +50,100 @@ task config-rm -key KEY
 
 ```bash
 # show usage for ALL commands
-task
+sf
 ```
 
-Note: following calls require `TASK_USERNAME` and `TASK_PASSWORD` to be a valid authenticated user.
+Note: following calls require `SF_USERNAME` and `SF_PASSWORD` to be a valid authenticated user.
+
+## Admin-Only Commands
+
+These commands demand that the SF_USERNAME is the authenticated admin user.
+
+Enable/Disable a user.  A user disabled will not be permitted by the server to carry out any actions - a 401 will be sent.   
+
+```bash
+sf enable-user -username XXXX
+sf disable-user -username XXXX
+```
+
+The admin can set configuration values
+
+```bash
+# set a configuration value
+sf config-set -key KEY -value VALUE
+
+# delete a configuration value
+sf config-rm -key KEY
+```
+
 
 ```bash
 
 # get all configuration
-task config-ls 
+sf config-ls 
 
 # get all configuration (as pretty-printed json)
-task config-ls -json
+sf config-ls -json
 
 # list all projects
-task project list 
+sf project list 
 
-# activate project NAME as default working project (stores in ~/.config/task/config.json)
-task project set $NAME
+# activate project NAME as default working project (stores in ~/.config/sf/config.json)
+sf project set $NAME
 
-# deactivate project NAME as default working project (stores in ~/.config/task/config.json) (revert to project "default")
-task project unset $NAME
+# deactivate project NAME as default working project (stores in ~/.config/sf/config.json) (revert to project "default")
+sf project unset $NAME
 
 # add a dependency so that B is blocking A
-task update -task_id A -blocked_by B
+sf update -task_id A -blocked_by B
 
 # change status of a task
-task update -task_id A -status xxxx
+sf update -task_id A -status xxxx
 
 # update acceptance criteria
-task update -task_id A -acceptance_criteria "xxxx"
+sf update -task_id A -acceptance_criteria "xxxx"
 
 # update task title
-task update -task_id A -title "The title"
+sf update -task_id A -title "The title"
 
-Note that `task update` requires the `-task_id` then any paramter shoudl be modifiable by the corresponding input key.
+# Note that `sf update` requires the `-task_id` then any paramter should be modifiable by the corresponding input key.
+
+# comment on a task
+sf comment -task_id A -comment "The comment"
+
 
 # delete a task
-task rm|delete -task_id N 
+sf rm|delete -task_id N 
 
 # list tasks that have hte specified attribute/value
-task list|ls (-project_id N) (-status N) (-type N) (-owner N)
+sf list|ls (-project_id N) (-status N) (-type N) (-owner N)
 
 # list all users
-task user list
+sf user list
 
 # list all users of a given type
-task user list -type human|worker
+sf user list -type human|worker
 
 # create a user
-task user create -user_id X -description desc -type human|worker
+sf user create -user_id X -description desc -type human|worker
 
-# claim a task (the current TASK_USERNAME)
-task claim X -task_id Y
+# claim a task (the current SF_USERNAME)
+sf claim X -task_id Y
 
 # request a task 
 # normally the task chosed BY the orchestrator
-task request (-task_id Y)
+sf request (-task_id Y)
 
 # free a task 
 # normally the task is whatever is being worked on so auto-identified
-task free X (-task_id Y)
+sf free X (-task_id Y)
 
 # assign a task (to a specific user)
 # normally this is not necessary as teh orchestrator will decide
-task assign -task_id Y -username XXXXX
+sf assign -task_id Y -username XXXXX
 
 # view user history
-task user history -user_id X
+sf user history -user_id X
 
 ```
 

@@ -2,38 +2,280 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 
 	"github.com/simonski/task/internal/cli"
+	"github.com/simonski/task/internal/db"
+	"github.com/simonski/task/internal/orchestrator"
+	"github.com/simonski/task/internal/server"
+	"github.com/simonski/task/internal/tui"
+	"github.com/simonski/task/internal/web"
+	"github.com/simonski/task/internal/worker"
 )
 
-func cliMain() {
+const version = "1.0.0"
+
+func main() {
 	if len(os.Args) < 2 {
-		printCLIUsage()
-		os.Exit(0)
+		printUsage()
+		os.Exit(1)
 	}
 
-	command := os.Args[1]
+	subcommand := os.Args[1]
 
-	// Parse config from all remaining args
-	config, err := cli.NewConfig(os.Args[2:])
+	switch subcommand {
+	case "server":
+		runServer(os.Args[2:])
+	case "orchestrator":
+		runOrchestrator(os.Args[2:])
+	case "worker":
+		runWorker(os.Args[2:])
+	case "initdb":
+		runInitDB(os.Args[2:])
+	case "tui", "-tui":
+		runTUI(os.Args[2:])
+	case "login", "register", "project", "task", "user", "role", "config":
+		runCLI(os.Args[1:])
+	case "version", "-v", "--version":
+		fmt.Printf("sf version %s\n", version)
+	case "help", "-h", "--help":
+		printUsage()
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", subcommand)
+		printUsage()
+		os.Exit(1)
+	}
+}
+
+func printUsage() {
+	fmt.Println("sf - Software Factory")
+	fmt.Printf("Version: %s\n\n", version)
+	fmt.Println("Usage: sf <command> [options]")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  server        Start the HTTP server")
+	fmt.Println("  orchestrator  Start the orchestrator daemon")
+	fmt.Println("  worker        Start a worker daemon")
+	fmt.Println("  initdb        Initialize the database")
+	fmt.Println("  tui           Start the Terminal User Interface")
+	fmt.Println()
+	fmt.Println("  login         Login and save credentials")
+	fmt.Println("  register      Register a new account")
+	fmt.Println()
+	fmt.Println("  project       Manage projects")
+	fmt.Println("  task          Manage tasks")
+	fmt.Println("  user          Manage users")
+	fmt.Println("  role          Manage roles")
+	fmt.Println("  config        Manage configuration")
+	fmt.Println()
+	fmt.Println("  version       Show version information")
+	fmt.Println("  help          Show this help message")
+	fmt.Println()
+	fmt.Println("Use 'sf <command> -h' for more information about a command.")
+}
+
+func runServer(args []string) {
+	fs := flag.NewFlagSet("server", flag.ExitOnError)
+	dbPath := fs.String("f", "", "Path to database file (default: ~/.config/sf/sf.db)")
+	port := fs.Int("port", 8080, "Server port")
+	fs.Parse(args)
+
+	finalPath := *dbPath
+	if finalPath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			log.Fatalf("Failed to get home directory: %v", err)
+		}
+		finalPath = filepath.Join(home, ".config", "sf", "sf.db")
+	}
+
+	if _, err := os.Stat(finalPath); os.IsNotExist(err) {
+		log.Fatalf("Database does not exist at %s. Please run 'sf initdb' first.", finalPath)
+	}
+
+	database, err := db.Open(finalPath)
+	if err != nil {
+		log.Fatalf("Failed to open database: %v", err)
+	}
+	defer database.Close()
+
+	srv := server.New(database)
+	srv.SetWebFS(web.FS)
+
+	addr := fmt.Sprintf(":%d", *port)
+	log.Printf("Starting server on %s", addr)
+	log.Printf("Database: %s", finalPath)
+	if err := http.ListenAndServe(addr, srv.Router()); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
+}
+
+func runOrchestrator(args []string) {
+	fs := flag.NewFlagSet("orchestrator", flag.ExitOnError)
+	serverURL := fs.String("url", "http://localhost:8080", "Server URL")
+	username := fs.String("username", os.Getenv("SF_USERNAME"), "Username")
+	password := fs.String("password", os.Getenv("SF_PASSWORD"), "Password")
+	fs.Parse(args)
+
+	if *username == "" || *password == "" {
+		fmt.Fprintln(os.Stderr, "Error: SF_USERNAME and SF_PASSWORD required")
+		os.Exit(1)
+	}
+
+	orch := orchestrator.New(*serverURL, *username, *password)
+	if err := orch.Start(); err != nil {
+		log.Fatalf("Failed to start orchestrator: %v", err)
+	}
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	<-sigCh
+
+	orch.Stop()
+	log.Println("Orchestrator stopped")
+}
+
+func runWorker(args []string) {
+	fs := flag.NewFlagSet("worker", flag.ExitOnError)
+	serverURL := fs.String("url", "http://localhost:8080", "Server URL")
+	username := fs.String("username", os.Getenv("SF_USERNAME"), "Username")
+	password := fs.String("password", os.Getenv("SF_PASSWORD"), "Password")
+	fs.Parse(args)
+
+	if *username == "" || *password == "" {
+		fmt.Fprintln(os.Stderr, "Error: SF_USERNAME and SF_PASSWORD required")
+		os.Exit(1)
+	}
+
+	w := worker.New(*serverURL, *username, *password)
+	if err := w.Start(); err != nil {
+		log.Fatalf("Failed to start worker: %v", err)
+	}
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	<-sigCh
+
+	w.Stop()
+	log.Println("Worker stopped")
+}
+
+func runInitDB(args []string) {
+	fs := flag.NewFlagSet("initdb", flag.ExitOnError)
+	dbPath := fs.String("f", "", "Path to database file (default: ~/.config/sf/sf.db)")
+	force := fs.Bool("force", false, "Force rebuild database (removes existing database)")
+	adminPassword := fs.String("password", "", "Set admin password (if not provided, a random password is generated)")
+	fs.Parse(args)
+
+	finalPath := *dbPath
+	if finalPath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Failed to get home directory: %v\n", err)
+			os.Exit(1)
+		}
+		finalPath = filepath.Join(home, ".config", "sf", "sf.db")
+	}
+
+	// Check if database exists
+	if _, err := os.Stat(finalPath); err == nil {
+		if !*force {
+			fmt.Fprintf(os.Stderr, "Error: Database already exists at %s\n", finalPath)
+			fmt.Fprintf(os.Stderr, "Please remove it first or use --force to rebuild\n")
+			os.Exit(1)
+		}
+		// Remove existing database
+		if err := os.Remove(finalPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Failed to remove existing database: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Removed existing database at %s\n", finalPath)
+	}
+
+	database, err := db.Open(finalPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Failed to open database: %v\n", err)
+		os.Exit(1)
+	}
+	defer database.Close()
+
+	actualAdminPassword, orchestratorPassword, err := database.InitializeDatabaseWithPasswords(*adminPassword, "")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Failed to initialize database: %v\n", err)
+		os.Remove(finalPath)
+		os.Exit(1)
+	}
+
+	fmt.Println("Database initialized successfully!")
+	fmt.Printf("Location: %s\n\n", finalPath)
+	fmt.Println("Admin credentials:")
+	fmt.Println("  Username: admin")
+	fmt.Printf("  Password: %s\n\n", actualAdminPassword)
+	fmt.Println("Orchestrator credentials:")
+	fmt.Println("  Username: orchestrator")
+	fmt.Printf("  Password: %s\n\n", orchestratorPassword)
+	fmt.Println("IMPORTANT: Save these credentials securely. They cannot be recovered.")
+}
+
+func runTUI(args []string) {
+	// Parse command line args for config
+	config, err := cli.NewConfig(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
+	// Run the TUI
+	if err := tui.Run(config); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func runCLI(args []string) {
+	if len(args) < 1 {
+		printCLIUsage()
+		os.Exit(0)
+	}
+
+	command := args[0]
+
+	// Parse config from all remaining args
+	config, err := cli.NewConfig(args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Login and register don't require prior authentication
+	if command == "login" {
+		handleLoginCommand(config)
+		return
+	}
+	if command == "register" {
+		handleRegisterCommand(config)
+		return
+	}
+
 	if config.Username == "" || config.Password == "" {
 		fmt.Fprintln(os.Stderr, "Error: Username and password required")
-		fmt.Fprintln(os.Stderr, "Set TASK_USERNAME and TASK_PASSWORD environment variables")
+		fmt.Fprintln(os.Stderr, "Set SF_USERNAME and SF_PASSWORD environment variables")
 		fmt.Fprintln(os.Stderr, "Or use -username and -password flags")
+		fmt.Fprintln(os.Stderr, "Or run 'sf login' to authenticate")
 		os.Exit(1)
 	}
 
 	client := cli.NewClient(config)
 
 	// Extract subcommand and remaining args (skip flags)
-	subArgs := filterNonFlags(os.Args[2:])
+	subArgs := filterNonFlags(args[1:])
 
 	switch command {
 	case "project":
@@ -74,45 +316,49 @@ func filterNonFlags(args []string) []string {
 }
 
 func printCLIUsage() {
-	fmt.Println("Task CLI Commands:")
+	fmt.Println("SF CLI Commands:")
 	fmt.Println()
-	fmt.Println("  task project list              List all projects")
-	fmt.Println("  task project get -id <id>      Get project details")
-	fmt.Println("  task project set <name>        Set active project")
-	fmt.Println("  task project unset             Unset active project")
-	fmt.Println("  task project create -name <n>  Create new project")
+	fmt.Println("Authentication:")
+	fmt.Println("  sf login                     Login and save credentials")
+	fmt.Println("  sf register                  Register a new account")
 	fmt.Println()
-	fmt.Println("  task task list                 List all tasks")
-	fmt.Println("  task task get -id <id>         Get task details")
-	fmt.Println("  task task create -title <t>    Create new task")
-	fmt.Println("  task task update -id <id> ...  Update task")
-	fmt.Println("  task task delete -id <id>      Delete task")
-	fmt.Println("  task task claim -id <id>       Claim task")
-	fmt.Println("  task task free -id <id>        Free task")
-	fmt.Println("  task task assign -id <id> -u   Assign task to user")
-	fmt.Println("  task task complete -id <id>    Complete task")
-	fmt.Println("  task task block -id <id> -by B Block task by another task")
-	fmt.Println("  task task unblock -id <id>     Remove task blocking")
-	fmt.Println("  task task history -id <id>     Show task history")
-	fmt.Println("  task task deps -id <id>        Show task dependencies")
+	fmt.Println("  sf project list              List all projects")
+	fmt.Println("  sf project get -id <id>      Get project details")
+	fmt.Println("  sf project set <name>        Set active project")
+	fmt.Println("  sf project unset             Unset active project")
+	fmt.Println("  sf project create -name <n>  Create new project")
 	fmt.Println()
-	fmt.Println("  task user list                 List all users")
-	fmt.Println("  task user create -u <name>     Create user")
-	fmt.Println("  task user enable -u <name>     Enable user")
-	fmt.Println("  task user disable -u <name>    Disable user")
+	fmt.Println("  sf task list                 List all tasks")
+	fmt.Println("  sf task get -id <id>         Get task details")
+	fmt.Println("  sf task create -title <t>    Create new task")
+	fmt.Println("  sf task update -id <id> ...  Update task")
+	fmt.Println("  sf task delete -id <id>      Delete task")
+	fmt.Println("  sf task claim -id <id>       Claim task")
+	fmt.Println("  sf task free -id <id>        Free task")
+	fmt.Println("  sf task assign -id <id> -u   Assign task to user")
+	fmt.Println("  sf task complete -id <id>    Complete task")
+	fmt.Println("  sf task block -id <id> -by B Block task by another task")
+	fmt.Println("  sf task unblock -id <id>     Remove task blocking")
+	fmt.Println("  sf task history -id <id>     Show task history")
+	fmt.Println("  sf task deps -id <id>        Show task dependencies")
 	fmt.Println()
-	fmt.Println("  task role list                 List all roles")
-	fmt.Println("  task role get -id <id>         Get role details")
-	fmt.Println("  task role create -name <n>     Create role")
+	fmt.Println("  sf user list                 List all users")
+	fmt.Println("  sf user create -u <name>     Create user")
+	fmt.Println("  sf user enable -u <name>     Enable user")
+	fmt.Println("  sf user disable -u <name>    Disable user")
 	fmt.Println()
-	fmt.Println("  task config list               List all config")
-	fmt.Println("  task config set -key K -val V  Set config value")
-	fmt.Println("  task config delete -key K      Delete config value")
+	fmt.Println("  sf role list                 List all roles")
+	fmt.Println("  sf role get -id <id>         Get role details")
+	fmt.Println("  sf role create -name <n>     Create role")
+	fmt.Println()
+	fmt.Println("  sf config list               List all config")
+	fmt.Println("  sf config set -key K -val V  Set config value")
+	fmt.Println("  sf config delete -key K      Delete config value")
 	fmt.Println()
 	fmt.Println("Global flags:")
 	fmt.Println("  -url <url>        Server URL (default: http://localhost:8080)")
-	fmt.Println("  -username <name>  Username (or set TASK_USERNAME)")
-	fmt.Println("  -password <pass>  Password (or set TASK_PASSWORD)")
+	fmt.Println("  -username <name>  Username (or set SF_USERNAME)")
+	fmt.Println("  -password <pass>  Password (or set SF_PASSWORD)")
 	fmt.Println("  -json             Output as JSON")
 }
 
@@ -806,4 +1052,96 @@ func extractFlag(args []string, flag string) string {
 
 func parseJSON(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
+}
+
+func handleLoginCommand(config *cli.Config) {
+	// Prompt for credentials if not provided
+	if config.Username == "" {
+		fmt.Print("Username: ")
+		fmt.Scanln(&config.Username)
+	}
+	if config.Password == "" {
+		fmt.Print("Password: ")
+		fmt.Scanln(&config.Password)
+	}
+
+	if config.Username == "" || config.Password == "" {
+		fmt.Fprintln(os.Stderr, "Error: Username and password are required")
+		os.Exit(1)
+	}
+
+	// Test authentication
+	client := cli.NewClient(config)
+	data, err := client.Request("GET", "/api/v1/auth/me", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Login failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Save credentials
+	if err := cli.SaveCredentials(config.ServerURL, config.Username, config.Password); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to save credentials: %v\n", err)
+	}
+
+	if config.JSON {
+		fmt.Println(string(data))
+	} else {
+		var user map[string]interface{}
+		if err := parseJSON(data, &user); err == nil {
+			fmt.Printf("Logged in as: %v\n", user["username"])
+			fmt.Printf("Type: %v\n", user["type"])
+			fmt.Println("\nCredentials saved to ~/.config/sf/credentials.json")
+		} else {
+			fmt.Println("Login successful")
+		}
+	}
+}
+
+func handleRegisterCommand(config *cli.Config) {
+	// Prompt for credentials if not provided
+	if config.Username == "" {
+		fmt.Print("Username: ")
+		fmt.Scanln(&config.Username)
+	}
+	if config.Password == "" {
+		fmt.Print("Password: ")
+		fmt.Scanln(&config.Password)
+	}
+
+	if config.Username == "" || config.Password == "" {
+		fmt.Fprintln(os.Stderr, "Error: Username and password are required")
+		os.Exit(1)
+	}
+
+	// Register user
+	client := cli.NewClient(config)
+	body := map[string]string{
+		"username": config.Username,
+		"password": config.Password,
+		"type":     "human",
+	}
+	data, err := client.Request("POST", "/api/v1/auth/register", body)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Registration failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Save credentials
+	if err := cli.SaveCredentials(config.ServerURL, config.Username, config.Password); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to save credentials: %v\n", err)
+	}
+
+	if config.JSON {
+		fmt.Println(string(data))
+	} else {
+		var user map[string]interface{}
+		if err := parseJSON(data, &user); err == nil {
+			fmt.Printf("Account created: %v\n", user["username"])
+			fmt.Printf("Type: %v\n", user["type"])
+			fmt.Println("\nCredentials saved to ~/.config/sf/credentials.json")
+			fmt.Println("You can now use 'sf' commands without providing credentials.")
+		} else {
+			fmt.Println("Registration successful")
+		}
+	}
 }

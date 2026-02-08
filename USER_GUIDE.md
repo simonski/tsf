@@ -1,17 +1,18 @@
 # User Guide
 
-Complete guide to using tsf.
+Complete guide to using sf.
 
 ## Table of Contents
 
 1. [Getting Started](#getting-started)
 2. [Web Interface](#web-interface)
-3. [Command Line Interface](#command-line-interface)
-4. [API Usage](#api-usage)
-5. [Managing Projects](#managing-projects)
-6. [Managing Tasks](#managing-tasks)
-7. [Roles and Workers](#roles-and-workers)
-8. [Configuration](#configuration)
+3. [Terminal User Interface (TUI)](#terminal-user-interface-tui)
+4. [Command Line Interface](#command-line-interface)
+5. [API Usage](#api-usage)
+6. [Managing Projects](#managing-projects)
+7. [Managing Tasks](#managing-tasks)
+8. [Roles and Workers](#roles-and-workers)
+9. [Configuration](#configuration)
 
 ## Getting Started
 
@@ -39,7 +40,7 @@ make build
 1. **Initialize the database:**
 
 ```bash
-./bin/task-initdb -f ~/.config/task/task.db
+./sf initdb -f ~/.config/sf/sf.db
 ```
 
 This creates a SQLite database with:
@@ -50,7 +51,7 @@ This creates a SQLite database with:
 2. **Start the server:**
 
 ```bash
-./bin/task-server -f ~/.config/task/task.db -port 8080
+./sf server -f ~/.config/sf/sf.db -port 8080
 ```
 
 3. **Access the web UI:**
@@ -63,9 +64,9 @@ Open http://localhost:8080 in your browser.
 
 Using the CLI:
 ```bash
-export TASK_SERVER_URL=http://localhost:8080
-export TASK_USERNAME=admin
-export TASK_PASSWORD=admin123
+export SF_SERVER_URL=http://localhost:8080
+export SF_USERNAME=admin
+export SF_PASSWORD=admin123
 
 # Change password via direct database update or API
 # Note: Password management via CLI is not yet implemented
@@ -99,7 +100,7 @@ After logging in:
 
 ### Passkey Authentication (Passwordless Login)
 
-tsf supports passkey authentication, providing a more secure and convenient login experience using your device's biometric sensors (fingerprint, face recognition) or hardware security keys.
+sf supports passkey authentication, providing a more secure and convenient login experience using your device's biometric sensors (fingerprint, face recognition) or hardware security keys.
 
 #### Registering a Passkey
 
@@ -163,22 +164,186 @@ Click any task card to open the task detail modal showing:
 3. Click "Save Changes"
 4. The task moves to the appropriate column
 
-## Command Line Interface
+## Terminal User Interface (TUI)
 
-### Configuration
+The TUI provides a full-featured terminal-based interface for managing tasks.
 
-Set environment variables for authentication:
+### Launching the TUI
 
 ```bash
-export TASK_SERVER_URL=http://localhost:8080
-export TASK_USERNAME=admin
-export TASK_PASSWORD=admin123
+# Using environment variables for credentials
+export SF_SERVER_URL=http://localhost:8080
+export SF_USERNAME=admin
+export SF_PASSWORD=admin123
+
+./sf tui
 ```
+
+Or with flags:
+
+```bash
+./sf tui -url http://localhost:8080
+```
+
+### First-Time Login and Registration
+
+When you launch the TUI, you'll see the login screen.
+
+#### Logging In
+
+1. Enter your username (Tab to move to next field)
+2. Enter your password
+3. Press Enter to login
+
+#### Registering a New Account
+
+1. From the login screen, press **Ctrl+R** to switch to registration
+2. Enter a username
+3. Enter a password (minimum 8 characters)
+4. Confirm your password
+5. Press Enter to register
+
+You'll be automatically logged in after successful registration.
+
+To go back to login from registration, press **Esc**.
+
+### Navigation
+
+**General Navigation:**
+- **Tab/Shift+Tab**: Move between fields or options
+- **Enter**: Select or submit
+- **Esc**: Go back or cancel
+- **Ctrl+C** (twice): Quit the application
+
+**In List Views:**
+- **↑/↓ or j/k**: Navigate items
+- **n**: Create new item
+- **e**: Edit selected item
+- **d**: Delete selected item
+- **r**: Refresh list
+- **Backspace**: Return to main menu
+
+### Main Menu
+
+After login, you'll see the main menu with six options:
+
+1. **Projects**: Manage projects and their details
+2. **Tasks**: View and manage tasks across all projects
+3. **Roles**: Define and manage role-based access
+4. **Users**: User account management
+5. **Config**: System configuration
+6. **Workers**: Monitor active workers (view-only)
+
+Use arrow keys to select an option and press Enter.
+
+### Managing Entities
+
+All entity screens (Projects, Tasks, Roles, Users, Config) follow the same pattern:
+
+#### Viewing Lists
+
+- Navigate items with arrow keys or j/k
+- View details of the selected item in the table
+
+#### Creating Items
+
+1. Press **n** for "New"
+2. Fill in the form fields (use Tab to move between fields)
+3. Press Enter to submit
+4. Press Esc to cancel
+
+#### Editing Items
+
+1. Select an item from the list
+2. Press **e** for "Edit"
+3. Modify fields as needed
+4. Press Enter to save
+5. Press Esc to cancel
+
+#### Deleting Items
+
+1. Select an item from the list
+2. Press **d** for "Delete"
+3. The item is removed immediately
+
+#### Refreshing
+
+Press **r** to reload the current list from the server.
+
+### Workers View
+
+The Workers screen shows real-time information about active workers:
+
+- Worker ID
+- Status
+- Last heartbeat time
+- Active tasks
+
+This is a view-only screen. Use arrow keys to browse workers.
+
+### Tips
+
+- **Credentials**: If you set `SF_USERNAME` and `SF_PASSWORD` environment variables, they'll auto-fill on the login screen
+- **Quick Navigation**: Use keyboard shortcuts consistently across all screens for efficient workflow
+- **Error Messages**: Any errors will display at the top of the screen in red
+
+## Command Line Interface
+
+### Authentication
+
+#### Login
+
+The easiest way to authenticate is using the `login` command:
+
+```bash
+./sf login
+```
+
+You'll be prompted for username and password. Your credentials will be saved to `~/.config/sf/credentials.json` for future use.
+
+You can also provide credentials via flags:
+
+```bash
+./sf login -username admin -password admin123
+```
+
+#### Register a New Account
+
+```bash
+./sf register
+```
+
+You'll be prompted for username and password. After successful registration, your credentials are automatically saved.
+
+Or with flags:
+
+```bash
+./sf register -username myuser -password mypassword
+```
+
+#### Using Environment Variables
+
+Alternatively, set environment variables:
+
+```bash
+export SF_SERVER_URL=http://localhost:8080
+export SF_USERNAME=admin
+export SF_PASSWORD=admin123
+```
+
+#### Credential Priority
+
+Credentials are loaded in this order:
+1. Command-line flags (`-username`, `-password`)
+2. Environment variables (`SF_USERNAME`, `SF_PASSWORD`)
+3. Saved credentials file (`~/.config/sf/credentials.json`)
+
+### Configuration
 
 Or use command-line flags:
 
 ```bash
-./bin/task -server http://localhost:8080 -username admin -password admin123 <command>
+./sf -server http://localhost:8080 -username admin -password admin123 <command>
 ```
 
 ### Project Management
@@ -186,7 +351,7 @@ Or use command-line flags:
 #### List Projects
 
 ```bash
-./bin/task project list
+./sf project list
 ```
 
 Output:
@@ -199,7 +364,7 @@ ID                                   | Name          | Description
 #### Create Project
 
 ```bash
-./bin/task project create \
+./sf project create \
   -name "My New Project" \
   -description "Project for feature development"
 ```
@@ -207,13 +372,13 @@ ID                                   | Name          | Description
 #### View Project Details
 
 ```bash
-./bin/task project get -id <project-id>
+./sf project get -id <project-id>
 ```
 
 #### Update Project
 
 ```bash
-./bin/task project update \
+./sf project update \
   -id <project-id> \
   -name "Updated Name" \
   -description "Updated description"
@@ -222,7 +387,7 @@ ID                                   | Name          | Description
 #### Delete Project
 
 ```bash
-./bin/task project delete -id <project-id>
+./sf project delete -id <project-id>
 ```
 
 ### Task Management
@@ -231,26 +396,26 @@ ID                                   | Name          | Description
 
 List all tasks:
 ```bash
-./bin/task task list
+./sf task list
 ```
 
 List tasks for a specific project:
 ```bash
-./bin/task task list -project <project-id>
+./sf task list -project <project-id>
 ```
 
 Filter by status:
 ```bash
-./bin/task task list -status todo
-./bin/task task list -status in_progress
-./bin/task task list -status blocked
-./bin/task task list -status completed
+./sf task list -status todo
+./sf task list -status in_progress
+./sf task list -status blocked
+./sf task list -status completed
 ```
 
 #### Create Task
 
 ```bash
-./bin/task task create \
+./sf task create \
   -title "Implement user authentication" \
   -description "Add login and registration endpoints" \
   -project <project-id> \
@@ -262,13 +427,13 @@ Priority options: `low`, `medium`, `high` (default: `medium`)
 #### View Task Details
 
 ```bash
-./bin/task task get -id <task-id>
+./sf task get -id <task-id>
 ```
 
 #### Update Task
 
 ```bash
-./bin/task task update \
+./sf task update \
   -id <task-id> \
   -title "Updated title" \
   -description "Updated description" \
@@ -279,35 +444,35 @@ Priority options: `low`, `medium`, `high` (default: `medium`)
 #### Delete Task
 
 ```bash
-./bin/task task delete -id <task-id>
+./sf task delete -id <task-id>
 ```
 
 #### Task Actions
 
 Claim a task (assign to yourself):
 ```bash
-./bin/task task claim -id <task-id>
+./sf task claim -id <task-id>
 ```
 
 Assign task to another user:
 ```bash
-./bin/task task assign -id <task-id> -user <username>
+./sf task assign -id <task-id> -user <username>
 ```
 
 Free a task (unassign):
 ```bash
-./bin/task task free -id <task-id>
+./sf task free -id <task-id>
 ```
 
 Mark task as complete:
 ```bash
-./bin/task task complete -id <task-id>
+./sf task complete -id <task-id>
 ```
 
 #### View Task History
 
 ```bash
-./bin/task task history -id <task-id>
+./sf task history -id <task-id>
 ```
 
 Shows all status changes with timestamps.
@@ -317,13 +482,13 @@ Shows all status changes with timestamps.
 #### List Users
 
 ```bash
-./bin/task user list
+./sf user list
 ```
 
 #### Create User
 
 ```bash
-./bin/task user create \
+./sf user create \
   -username newuser \
   -password securepass123 \
   -type human
@@ -334,8 +499,8 @@ User types: `human`, `worker`, `orchestrator`
 #### Enable/Disable Users
 
 ```bash
-./bin/task user enable -username <username>
-./bin/task user disable -username <username>
+./sf user enable -username <username>
+./sf user disable -username <username>
 ```
 
 ### Role Management
@@ -343,13 +508,13 @@ User types: `human`, `worker`, `orchestrator`
 #### List Roles
 
 ```bash
-./bin/task role list
+./sf role list
 ```
 
 #### Create Role
 
 ```bash
-./bin/task role create \
+./sf role create \
   -name "Senior Developer" \
   -instructions "You are an experienced developer with expertise in Go and Python." \
   -project <project-id>
@@ -358,7 +523,7 @@ User types: `human`, `worker`, `orchestrator`
 #### Update Role
 
 ```bash
-./bin/task role update \
+./sf role update \
   -id <role-id> \
   -name "Updated Role Name" \
   -instructions "Updated instructions"
@@ -367,7 +532,7 @@ User types: `human`, `worker`, `orchestrator`
 #### Delete Role
 
 ```bash
-./bin/task role delete -id <role-id>
+./sf role delete -id <role-id>
 ```
 
 ### Output Formats
@@ -375,7 +540,7 @@ User types: `human`, `worker`, `orchestrator`
 Get JSON output for scripting:
 
 ```bash
-./bin/task task list -format json
+./sf task list -format json
 ```
 
 Default output is human-readable tables.
@@ -479,12 +644,12 @@ See [api-specification.yaml](../api-specification.yaml) for complete API documen
 The CLI can maintain a default project context:
 
 ```bash
-export TASK_PROJECT_ID=550e8400-e29b-41d4-a716-446655440000
+export SF_PROJECT_ID=550e8400-e29b-41d4-a716-446655440000
 ```
 
 Then commands default to that project:
 ```bash
-./bin/task task list  # Lists tasks for the default project
+./sf task list  # Lists tasks for the default project
 ```
 
 ### Project Members
@@ -492,7 +657,7 @@ Then commands default to that project:
 Add members to a project to control access and visibility:
 
 ```bash
-./bin/task project add-member \
+./sf project add-member \
   -project <project-id> \
   -username <username>
 ```
@@ -545,7 +710,7 @@ Roles define how AI workers should behave when processing tasks:
 ### Creating Effective Roles
 
 ```bash
-./bin/task role create \
+./sf role create \
   -name "Code Reviewer" \
   -instructions "You are a senior developer reviewing code for quality, security, and best practices. Provide constructive feedback." \
   -project <project-id>
@@ -562,7 +727,7 @@ Role instruction tips:
 Workers automatically request and process tasks:
 
 ```bash
-./bin/task-worker \
+./sf worker \
   -server http://localhost:8080 \
   -username worker1 \
   -password workerpass
@@ -580,7 +745,7 @@ The worker will:
 The orchestrator manages task distribution:
 
 ```bash
-./bin/task-orchestrator \
+./sf orchestrator \
   -server http://localhost:8080 \
   -username orchestrator \
   -password orchpass
@@ -601,19 +766,19 @@ Configuration is stored in the database and managed via the CLI.
 #### View Configuration
 
 ```bash
-task config list
+sf config list
 ```
 
 #### Set Configuration Value
 
 ```bash
-task config set -key key -val new-value
+sf config set -key key -val new-value
 ```
 
-#### Delete Configuration
+#### Delete Configuration Key
 
 ```bash
-task config delete -key key
+sf config delete -key key
 ```
 
 ### Configuration Keys
@@ -632,19 +797,19 @@ Server configuration:
 
 ```bash
 # Server
-export TASK_DB_PATH=~/.config/task/task.db
-export TASK_SERVER_PORT=8080
+export SF_DB_PATH=~/.config/sf/sf.db
+export SF_SERVER_PORT=8080
 
 # CLI
-export TASK_SERVER_URL=http://localhost:8080
-export TASK_USERNAME=admin
-export TASK_PASSWORD=admin123
-export TASK_PROJECT_ID=<default-project-id>
+export SF_SERVER_URL=http://localhost:8080
+export SF_USERNAME=admin
+export SF_PASSWORD=admin123
+export SF_PROJECT_ID=<default-project-id>
 
 # Orchestrator/Worker
-export TASK_SERVER_URL=http://localhost:8080
-export TASK_USERNAME=orchestrator
-export TASK_PASSWORD=orchpass
+export SF_SERVER_URL=http://localhost:8080
+export SF_USERNAME=orchestrator
+export SF_PASSWORD=orchpass
 ```
 
 ## Troubleshooting
@@ -653,13 +818,13 @@ export TASK_PASSWORD=orchpass
 
 **Error: Database does not exist**
 ```bash
-./bin/task-initdb -f ~/.config/task/task.db
+./sf initdb -f ~/.config/sf/sf.db
 ```
 
 **Error: Port already in use**
 ```bash
 # Use a different port
-./bin/task-server -port 8081
+./sf server -port 8081
 ```
 
 ### Authentication Failures
@@ -675,7 +840,7 @@ export TASK_PASSWORD=orchpass
 **Error: Connection refused**
 
 - Verify server is running: `task config list` (or check server process)
-- Check `TASK_URL` environment variable
+- Check `SF_URL` environment variable
 - Verify firewall/network settings
 
 ### Task Not Appearing
@@ -700,13 +865,13 @@ Scale horizontally by running multiple worker instances:
 
 ```bash
 # Terminal 1
-task worker -url http://localhost:8080 -username worker1 -password pass1
+sf worker -url http://localhost:8080 -username worker1 -password pass1
 
 # Terminal 2
-task worker -url http://localhost:8080 -username worker2 -password pass2
+sf worker -url http://localhost:8080 -username worker2 -password pass2
 
 # Terminal 3
-task worker -url http://localhost:8080 -username worker3 -password pass3
+sf worker -url http://localhost:8080 -username worker3 -password pass3
 ```
 
 ### Batch Operations
@@ -730,16 +895,16 @@ Backup the SQLite database regularly:
 
 ```bash
 # Backup
-cp ~/.config/task/task.db ~/.config/task/task.db.backup
+cp ~/.config/sf/sf.db ~/.config/sf/sf.db.backup
 
 # Restore
-cp ~/.config/task/task.db.backup ~/.config/task/task.db
+cp ~/.config/sf/sf.db.backup ~/.config/sf/sf.db
 ```
 
 For production, use SQLite's backup command:
 
 ```bash
-sqlite3 ~/.config/task/task.db ".backup ~/.config/task/task.db.backup"
+sqlite3 ~/.config/sf/sf.db ".backup ~/.config/sf/sf.db.backup"
 ```
 
 ## Tips and Best Practices

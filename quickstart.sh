@@ -41,14 +41,14 @@ echo "==================================="
 echo ""
 
 # Set environment variables
-export TASK_URL=http://localhost:8080
-export TASK_USERNAME=admin
-export TASK_PASSWORD=admin123
+export SF_URL=http://localhost:8080
+export SF_USERNAME=admin
+export SF_PASSWORD=admin123
 
 echo "3. Environment variables set:"
-echo "   TASK_URL=$TASK_URL"
-echo "   TASK_USERNAME=$TASK_USERNAME"
-echo "   TASK_PASSWORD=***"
+echo "   SF_URL=$SF_URL"
+echo "   SF_USERNAME=$SF_USERNAME"
+echo "   SF_PASSWORD=***"
 echo ""
 
 # Instructions
@@ -60,9 +60,9 @@ echo "To start the server:"
 echo "  ./task server -f $DB_PATH -port 8080"
 echo ""
 echo "In another terminal, test the CLI:"
-echo "  export TASK_URL=http://localhost:8080"
-echo "  export TASK_USERNAME=admin"
-echo "  export TASK_PASSWORD=admin123"
+echo "  export SF_URL=http://localhost:8080"
+echo "  export SF_USERNAME=admin"
+echo "  export SF_PASSWORD=admin123"
 echo ""
 echo "  ./task project list"
 echo "  ./task task create -title 'My First Task'"
