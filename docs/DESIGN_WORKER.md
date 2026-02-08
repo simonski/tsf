@@ -23,7 +23,7 @@ This ROLE is provided to the WORKER by the SERVER whenever work is assigned.
 
 # implicit SF_URL= default server url 
 # uses the same SF_USERNAME/SF_PASSWORD variables as a human user.
-./sf worker -username USERNAME
+./sf worker -worker_id USERNAME
 
 # explicit SF_URL=https://localhost
 export SF_URL=https://localhost

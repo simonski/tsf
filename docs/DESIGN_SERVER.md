@@ -32,6 +32,4 @@ All calls to the server MUST be Basic-Auth.
 
 The credentials must be encrypted - argon2id.   
 
-The server will maintain a USERS table which will contain all details of each type of user.
-
-Password reset is available to the admin-only via `./sf reset-password -username X -password Y`
+The server will maintain a USERS, WORKERS, ORCHESTRATORS set of tables which will contain all details and credentials.
