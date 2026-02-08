@@ -6,6 +6,8 @@ coverage.html
 .config/
 task
 task.db
+/sf
+/sf.db
 data/
 .env
 *.log
