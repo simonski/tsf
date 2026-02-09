@@ -1,5 +1,11 @@
 # NOTES
 
+The ORCHESTRATOR can be designed MANUALLY!
+Just write out the intent and the role and execute it.
+Ensure the steps are in sequence so that you can score it.
+Then automate that.
+
+
 Consensus
   All roles in the project should score a project based on their own criteria.
   0 - 1

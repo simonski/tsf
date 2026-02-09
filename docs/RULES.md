@@ -105,6 +105,19 @@ git push -u origin feature/<descriptive-name>
 - **ALWAYS** use `make build` for building
 - **ALWAYS** use `make test` for testing
 
+make test             - run all test
+   The ~/.config/test.db should be force rebuilt at the start.
+   The users should be created with the test_password password.
+   The server shoudl run on :9999
+   Integration and frontend tests shoudl route to :9999
+   Once complete the server and test processes should exit.
+   
+
+make test-unit - unit tests on go
+make test-integration - untegration tests with client -> server -> database
+make test-frontend    - runs frontend (website) tests
+make test-all         - runs all tests (unit, integration, frontend)
+
 ### Build Workflow
 When starting a new feature or TODO:
 1. Create feature branch from `develop`

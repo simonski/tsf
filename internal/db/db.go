@@ -13,6 +13,13 @@ import (
 //go:embed schema.sql
 var schemaFS embed.FS
 
+//go:embed scripts/initdb/users.md
+//go:embed scripts/initdb/workers.md
+//go:embed scripts/initdb/orchestrators.md
+//go:embed scripts/initdb/projects.md
+//go:embed scripts/initdb/roles.md
+var scriptsFS embed.FS
+
 // DB wraps the SQLite database connection
 type DB struct {
 	conn *sql.DB

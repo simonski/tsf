@@ -30,6 +30,4 @@ Each endpoint must have a fully documentated section in the OpenAPI specificatio
 
 All calls to the server MUST be Basic-Auth OR using a session token once the user has logged in.
 
-The credentials must be encrypted - argon2id.   
-
-The server will maintain a USERS, WORKERS, ORCHESTRATORS set of tables which will contain all details and credentials.
+The credentials must be encrypted - argon2id.

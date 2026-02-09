@@ -17,9 +17,12 @@
             <ul class="side-nav-links">
                 <li><a href="#" id="nav-overview" class="nav-link">Overview</a></li>
                 <li><a href="#" id="nav-projects" class="nav-link active">Projects</a></li>
-                <li><a href="#" id="nav-users" class="nav-link">Users</a></li>
+                <li><a href="#" id="nav-kanban" class="nav-link">Kanban</a></li>
+                <li><a href="#" id="nav-workers" class="nav-link">Workers</a></li>
+                <li><a href="#" id="nav-orchestrators" class="nav-link">Orchestrators</a></li>
+                <li><a href="#" id="nav-activity" class="nav-link">Activity</a></li>
+                <li><a href="#" id="nav-users" class="nav-link hidden">Users</a></li>
                 <li><a href="#" id="nav-config" class="nav-link hidden">Config</a></li>
-                <li><a href="#" id="nav-settings" class="nav-link">Settings</a></li>
                 <li><a href="#" id="nav-logout" class="nav-link">Logout</a></li>
             </ul>
         </nav>
@@ -55,20 +58,49 @@
             </div>
         </div>
 
+        <!-- Projects List Screen -->
+        <div id="projects-screen" class="screen hidden">
+            <header class="app-header">
+                <div class="header-left">
+                    <button id="projects-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <a href="#" class="logo-link">sf</a>
+                </div>
+                <h1>Projects</h1>
+                <div class="header-controls">
+                    <button id="add-project-button" class="primary-button">+ New Project</button>
+                    <a href="#" id="projects-profile-link" class="profile-link">Profile</a>
+                    <button id="projects-logout-button" class="secondary-button">Logout</button>
+                </div>
+            </header>
+            
+            <div class="projects-container">
+                <div id="projects-list" class="projects-list"></div>
+            </div>
+            <div id="projects-error" class="error-message hidden"></div>
+        </div>
+
         <!-- Kanban Board Screen -->
         <div id="board-screen" class="screen hidden">
             <header class="app-header">
-                <!-- Hamburger Menu Button -->
-                <button id="menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
-                <h1>Task Management</h1>
+                <!-- Hamburger Menu Button with Logo -->
+                <div class="header-left">
+                    <button id="menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <a href="#" id="logo-link" class="logo-link">sf</a>
+                </div>
+                <h1>Kanban Board</h1>
                 <div class="header-controls">
                     <select id="project-selector" class="project-dropdown">
                         <option value="">Loading projects...</option>
                     </select>
+                    <a href="#" id="board-profile-link" class="profile-link">Profile</a>
                     <button id="logout-button" class="secondary-button">Logout</button>
                 </div>
             </header>
@@ -154,13 +186,17 @@
         <!-- Overview Screen -->
         <div id="overview-screen" class="screen hidden">
             <header class="app-header">
-                <button id="overview-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
+                <div class="header-left">
+                    <button id="overview-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <a href="#" class="logo-link">sf</a>
+                </div>
                 <h1>System Overview</h1>
                 <div class="header-controls">
+                    <a href="#" id="overview-profile-link" class="profile-link">Profile</a>
                     <button id="overview-logout-button" class="secondary-button">Logout</button>
                 </div>
             </header>
@@ -174,24 +210,27 @@
             </div>
         </div>
 
-        <!-- Settings Screen -->
-        <div id="settings-screen" class="screen hidden">
+        <!-- Profile Screen -->
+        <div id="profile-screen" class="screen hidden">
             <header class="app-header">
-                <button id="settings-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
-                <h1>Settings</h1>
+                <div class="header-left">
+                    <button id="profile-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <a href="#" class="logo-link">sf</a>
+                </div>
+                <h1>Profile</h1>
                 <div class="header-controls">
-                    <button id="settings-logout-button" class="secondary-button">Logout</button>
+                    <button id="profile-logout-button" class="secondary-button">Logout</button>
                 </div>
             </header>
             
-            <div class="settings-container">
-                <div class="settings-section">
+            <div class="profile-container">
+                <div class="profile-section">
                     <h2>Passkey Management</h2>
-                    <p class="settings-description">Passkeys provide passwordless authentication using your device's biometric sensors or security keys.</p>
+                    <p class="profile-description">Passkeys provide passwordless authentication using your device's biometric sensors or security keys.</p>
                     <button id="register-passkey-button" class="primary-button">Add New Passkey</button>
                     <div id="passkey-list" class="passkey-list"></div>
                     <div id="passkey-error" class="error-message hidden"></div>
@@ -202,11 +241,14 @@
         <!-- Config Screen (Admin Only) -->
         <div id="config-screen" class="screen hidden">
             <header class="app-header">
-                <button id="config-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
+                <div class="header-left">
+                    <button id="config-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <a href="#" class="logo-link">sf</a>
+                </div>
                 <h1>Configuration</h1>
                 <div class="header-controls">
                     <button id="add-config-button" class="primary-button">Add Config</button>
@@ -232,6 +274,80 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workers Screen -->
+        <div id="workers-screen" class="screen hidden">
+            <header class="app-header">
+                <div class="header-left">
+                    <button id="workers-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <a href="#" class="logo-link">sf</a>
+                </div>
+                <h1>Workers</h1>
+                <div class="header-controls">
+                    <a href="#" id="workers-profile-link" class="profile-link">Profile</a>
+                    <button id="workers-logout-button" class="secondary-button">Logout</button>
+                </div>
+            </header>
+            <div class="workers-container">
+                <div id="workers-error" class="error-message hidden"></div>
+                <div id="workers-list" class="workers-list">
+                    <div class="loading-message">Loading workers...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orchestrators Screen -->
+        <div id="orchestrators-screen" class="screen hidden">
+            <header class="app-header">
+                <div class="header-left">
+                    <button id="orchestrators-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <a href="#" class="logo-link">sf</a>
+                </div>
+                <h1>Orchestrators</h1>
+                <div class="header-controls">
+                    <a href="#" id="orchestrators-profile-link" class="profile-link">Profile</a>
+                    <button id="orchestrators-logout-button" class="secondary-button">Logout</button>
+                </div>
+            </header>
+            <div class="orchestrators-container">
+                <div id="orchestrators-error" class="error-message hidden"></div>
+                <div id="orchestrators-list" class="orchestrators-list">
+                    <div class="loading-message">Loading orchestrators...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Screen -->
+        <div id="activity-screen" class="screen hidden">
+            <header class="app-header">
+                <div class="header-left">
+                    <button id="activity-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <a href="#" class="logo-link">sf</a>
+                </div>
+                <h1>Activity Log</h1>
+                <div class="header-controls">
+                    <button id="activity-refresh-button" class="primary-button">Refresh</button>                    <a href="#" id="activity-profile-link" class="profile-link">Profile</a>                    <button id="activity-logout-button" class="secondary-button">Logout</button>
+                </div>
+            </header>
+            <div class="activity-container">
+                <div id="activity-error" class="error-message hidden"></div>
+                <div id="activity-feed" class="activity-feed">
+                    <div class="loading-message">Loading activity...</div>
                 </div>
             </div>
         </div>

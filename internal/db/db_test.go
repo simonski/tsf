@@ -73,7 +73,7 @@ func TestInitializeDatabase(t *testing.T) {
 	defer db.Close()
 
 	// Initialize database
-	adminPassword, orchestratorPassword, err := db.InitializeDatabase()
+	adminPassword, userPassword, workerPassword, orchestratorPassword, err := db.InitializeDatabase()
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -82,11 +82,23 @@ func TestInitializeDatabase(t *testing.T) {
 	if adminPassword == "" {
 		t.Error("Admin password is empty")
 	}
+	if userPassword == "" {
+		t.Error("User password is empty")
+	}
+	if workerPassword == "" {
+		t.Error("Worker password is empty")
+	}
 	if orchestratorPassword == "" {
 		t.Error("Orchestrator password is empty")
 	}
 	if adminPassword == orchestratorPassword {
 		t.Error("Admin and orchestrator passwords are identical")
+	}
+	if adminPassword == userPassword {
+		t.Error("Admin and user passwords are identical")
+	}
+	if adminPassword == workerPassword {
+		t.Error("Admin and worker passwords are identical")
 	}
 
 	// Verify admin user exists

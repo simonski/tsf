@@ -8,46 +8,76 @@ import (
 )
 
 // InitializeDatabase sets up a new database with default data
-func (db *DB) InitializeDatabase() (adminPassword, orchestratorPassword string, err error) {
-	return db.InitializeDatabaseWithPasswords("", "")
+// Returns: adminPassword, userPassword, workerPassword, orchestratorPassword, error
+func (db *DB) InitializeDatabase() (adminPassword, userPassword, workerPassword, orchestratorPassword string, err error) {
+	return db.InitializeDatabaseWithPasswords("")
 }
 
 // InitializeDatabaseWithPasswords sets up a new database with custom passwords
-// If passwords are empty strings, random passwords will be generated
-func (db *DB) InitializeDatabaseWithPasswords(adminPassword, orchestratorPassword string) (string, string, error) {
+// If password is an empty string, random passwords will be generated for all users
+// If password is provided, all users will have the same password
+// Returns: adminPassword, userPassword, workerPassword, orchestratorPassword, error
+func (db *DB) InitializeDatabaseWithPasswords(password string) (string, string, string, string, error) {
 	// Apply schema
 	if err := db.InitSchema(); err != nil {
-		return "", "", fmt.Errorf("failed to initialize schema: %w", err)
+		return "", "", "", "", fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
-	// Generate passwords if not provided
+	// Generate or use provided password for all users
 	var err error
-	if adminPassword == "" {
+	var adminPassword, userPassword, workerPassword, orchestratorPassword string
+
+	if password == "" {
+		// Generate unique random passwords for each user
 		adminPassword, err = GeneratePassword(16)
 		if err != nil {
-			return "", "", fmt.Errorf("failed to generate admin password: %w", err)
+			return "", "", "", "", fmt.Errorf("failed to generate admin password: %w", err)
 		}
-	}
 
-	if orchestratorPassword == "" {
+		userPassword, err = GeneratePassword(16)
+		if err != nil {
+			return "", "", "", "", fmt.Errorf("failed to generate user password: %w", err)
+		}
+
+		workerPassword, err = GeneratePassword(16)
+		if err != nil {
+			return "", "", "", "", fmt.Errorf("failed to generate worker password: %w", err)
+		}
+
 		orchestratorPassword, err = GeneratePassword(16)
 		if err != nil {
-			return "", "", fmt.Errorf("failed to generate orchestrator password: %w", err)
+			return "", "", "", "", fmt.Errorf("failed to generate orchestrator password: %w", err)
 		}
+	} else {
+		// Use the same password for all users
+		adminPassword = password
+		userPassword = password
+		workerPassword = password
+		orchestratorPassword = password
 	}
 
 	// Hash passwords
 	adminHash, err := HashPassword(adminPassword)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to hash admin password: %w", err)
+		return "", "", "", "", fmt.Errorf("failed to hash admin password: %w", err)
+	}
+
+	userHash, err := HashPassword(userPassword)
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("failed to hash user password: %w", err)
+	}
+
+	workerHash, err := HashPassword(workerPassword)
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("failed to hash worker password: %w", err)
 	}
 
 	orchestratorHash, err := HashPassword(orchestratorPassword)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to hash orchestrator password: %w", err)
+		return "", "", "", "", fmt.Errorf("failed to hash orchestrator password: %w", err)
 	}
 
-	// Create admin and orchestrator users, default project, system roles, and config
+	// Create admin, user, worker and orchestrator users, default project, system roles, and config
 	err = db.Transaction(func(tx *sql.Tx) error {
 		// Create admin user
 		adminID := uuid.New().String()
@@ -57,6 +87,26 @@ func (db *DB) InitializeDatabaseWithPasswords(adminPassword, orchestratorPasswor
 		`, adminID, "admin", adminHash, "human", true)
 		if err != nil {
 			return fmt.Errorf("failed to create admin user: %w", err)
+		}
+
+		// Create normal user
+		userID := uuid.New().String()
+		_, err = tx.Exec(`
+			INSERT INTO users (id, username, password_hash, type, is_active)
+			VALUES (?, ?, ?, ?, ?)
+		`, userID, "user", userHash, "human", true)
+		if err != nil {
+			return fmt.Errorf("failed to create normal user: %w", err)
+		}
+
+		// Create worker
+		workerID := uuid.New().String()
+		_, err = tx.Exec(`
+			INSERT INTO users (id, username, password_hash, type, is_active)
+			VALUES (?, ?, ?, ?, ?)
+		`, workerID, "worker", workerHash, "worker", true)
+		if err != nil {
+			return fmt.Errorf("failed to create worker user: %w", err)
 		}
 
 		// Create orchestrator user
@@ -168,8 +218,8 @@ func (db *DB) InitializeDatabaseWithPasswords(adminPassword, orchestratorPasswor
 	})
 
 	if err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
 
-	return adminPassword, orchestratorPassword, nil
+	return adminPassword, userPassword, workerPassword, orchestratorPassword, nil
 }

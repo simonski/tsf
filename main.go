@@ -181,7 +181,8 @@ func runInitDB(args []string) {
 	fs := flag.NewFlagSet("initdb", flag.ExitOnError)
 	dbPath := fs.String("f", "", "Path to database file (default: ~/.config/sf/sf.db)")
 	force := fs.Bool("force", false, "Force rebuild database (removes existing database)")
-	adminPassword := fs.String("password", "", "Set admin password (if not provided, a random password is generated)")
+	password := fs.String("password", "", "Set password for all users (if not provided, random passwords are generated)")
+	populate := fs.Bool("populate", false, "Populate database from scripts/initdb/*.md files")
 	fs.Parse(args)
 
 	finalPath := *dbPath
@@ -216,7 +217,7 @@ func runInitDB(args []string) {
 	}
 	defer database.Close()
 
-	actualAdminPassword, orchestratorPassword, err := database.InitializeDatabaseWithPasswords(*adminPassword, "")
+	actualAdminPassword, userPassword, workerPassword, orchestratorPassword, err := database.InitializeDatabaseWithPasswords(*password)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: Failed to initialize database: %v\n", err)
 		os.Remove(finalPath)
@@ -228,10 +229,26 @@ func runInitDB(args []string) {
 	fmt.Println("Admin credentials:")
 	fmt.Println("  Username: admin")
 	fmt.Printf("  Password: %s\n\n", actualAdminPassword)
+	fmt.Println("User credentials:")
+	fmt.Println("  Username: user")
+	fmt.Printf("  Password: %s\n\n", userPassword)
+	fmt.Println("Worker credentials:")
+	fmt.Println("  Username: worker")
+	fmt.Printf("  Password: %s\n\n", workerPassword)
 	fmt.Println("Orchestrator credentials:")
 	fmt.Println("  Username: orchestrator")
 	fmt.Printf("  Password: %s\n\n", orchestratorPassword)
 	fmt.Println("IMPORTANT: Save these credentials securely. They cannot be recovered.")
+
+	// Populate from scripts if requested
+	if *populate {
+		fmt.Println("\nPopulating database from embedded scripts...")
+		if err := database.PopulateFromScripts(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to populate database: %v\n", err)
+		} else {
+			fmt.Println("Database populated successfully!")
+		}
+	}
 }
 
 func runTUI(args []string) {

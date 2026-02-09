@@ -31,7 +31,14 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 4. **Initialize the database**
    ```bash
+   # With random passwords (printed to stdout)
    ./sf initdb -f ~/.config/sf/sf.db
+   
+   # Or with a specific password for all users
+   ./sf initdb -f ~/.config/sf/sf.db --password dev
+   
+   # With test data from scripts/initdb/*.md
+   ./sf initdb -f ~/.config/sf/sf.db --password dev --populate
    ```
 
 5. **Run tests**

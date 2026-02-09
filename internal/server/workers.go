@@ -220,7 +220,7 @@ func (s *Server) handleListWorkers(w http.ResponseWriter, r *http.Request) {
 		       h.last_seen,
 		       h.task_id
 		FROM users u
-		LEFT JOIN heartbeats h ON u.id = h.worker_id
+		LEFT JOIN heartbeats h ON u.id = h.user_id
 		WHERE u.type = 'worker' AND u.is_active = 1
 		ORDER BY u.username
 	`
@@ -267,7 +267,7 @@ func (s *Server) handleGetWorker(w http.ResponseWriter, r *http.Request) {
 		       h.last_seen,
 		       h.task_id
 		FROM users u
-		LEFT JOIN heartbeats h ON u.id = h.worker_id
+		LEFT JOIN heartbeats h ON u.id = h.user_id
 		WHERE u.id = ? AND u.type = 'worker'
 	`
 

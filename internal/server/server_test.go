@@ -49,8 +49,8 @@ func testServer(t *testing.T) (*Server, func()) {
 
 	// Create a default role
 	_, err = database.Conn().Exec(`
-		INSERT INTO roles (id, name, description, rules, scope, created_by, updated_by)
-		VALUES ('role-1', 'programmer', 'Programmer role', '{}', 'system', 'admin-id', 'admin-id')
+		INSERT INTO roles (id, name, description, goals, scope, created_by, updated_by)
+		VALUES ('role-1', 'programmer', 'Programmer role', 'Write code', 'system', 'admin-id', 'admin-id')
 	`)
 	if err != nil {
 		t.Fatalf("Failed to create test role: %v", err)

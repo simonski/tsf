@@ -1,81 +1,134 @@
 openapi: 3.0.3
 info:
-  title: tsf API
-  description: RESTful API for managing projects, tasks, roles, and workers in a kanban-style workflow system
+  title: sf API
+  description: |
+    RESTful API for sf - a kanban-style task management system for software development.
+    
+    This API provides CRUD operations for projects, tasks, roles, users, workers, and system configuration.
+    The system enables task assignment to workers with specific roles, tracking work history, and orchestrating
+    software development workflows.
+    
+    All endpoints require authentication via Basic Auth or session token (obtained via login).
   version: 1.0.0
   contact:
-    name: tsf
-    
+    name: sf Project
+
 servers:
-  - url: https://localhost:8080/api/v1
+  - url: http://localhost:8080/api/v1
     description: Local development server
-    
+  - url: https://localhost:8080/api/v1
+    description: Local development server (HTTPS)
+
 security:
   - basicAuth: []
+  - sessionToken: []
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: Users
+    description: User management (admin only)
+  - name: Projects
+    description: Project workspace management
+  - name: Tasks
+    description: Task creation and lifecycle management
+  - name: Roles
+    description: Role definitions for workers
+  - name: Workers
+    description: Worker management and task assignment
+  - name: Config
+    description: System configuration (admin only)
+  - name: Orchestrator
+    description: Orchestrator heartbeat and status
+  - name: Health
+    description: Health check and monitoring
+  - name: Passkeys
+    description: WebAuthn passkey authentication
 
 components:
   securitySchemes:
     basicAuth:
       type: http
       scheme: basic
-      
+      description: HTTP Basic Authentication using username and password
+    sessionToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Session token obtained from login endpoint
+
   schemas:
     Error:
       type: object
       properties:
         error:
           type: string
-          description: Error message
+          description: Human-readable error message
         code:
           type: string
-          description: Error code
+          description: Machine-readable error code
       required:
         - error
-        
+
     User:
       type: object
       properties:
         id:
           type: string
-          format: uuid
+          description: Unique user identifier
         username:
           type: string
+          description: Unique username
         type:
           type: string
           enum: [human, worker, orchestrator]
+          description: User type - human (regular user), worker (automated agent), or orchestrator (system process)
         is_active:
           type: boolean
+          description: Whether the user is enabled and can authenticate
         created_at:
           type: string
           format: date-time
+          description: When the user was created
         updated_at:
           type: string
           format: date-time
+          description: When the user was last updated
       required:
         - id
         - username
         - type
         - is_active
-        
+
     Project:
       type: object
       properties:
         id:
           type: string
-          format: uuid
+          description: Unique project identifier (referred to as project_id in CLI)
         name:
           type: string
+          maxLength: 200
+          description: Unique project name (single sentence)
         description:
           type: string
+          minLength: 10
+          description: Multi-paragraph description of project goals
         repository:
           type: string
+          maxLength: 500
           nullable: true
+          description: Git repository URL for code context
         status:
           type: string
           enum: [active, inactive]
+          default: active
+          description: Whether orchestrator should process tasks from this project
         visibility:
           type: string
           enum: [public, internal, private]
+          default: public
+          description: Access control level - public (all can view/contribute), internal (all view, members contribute), private (members only)
         created_at:
           type: string
           format: date-time
@@ -84,38 +137,47 @@ components:
           format: date-time
         created_by:
           type: string
-          format: uuid
+          description: User ID who created the project
         updated_by:
           type: string
-          format: uuid
+          description: User ID who last updated the project
       required:
         - id
         - name
         - description
         - status
         - visibility
-        
+
     Role:
       type: object
       properties:
         id:
           type: string
-          format: uuid
+          description: Unique role identifier
         name:
           type: string
+          maxLength: 100
+          description: Short role name (e.g. programmer, tester)
         description:
           type: string
-        rules:
+          minLength: 20
+          description: Multi-paragraph job description
+        goals:
           type: string
+          minLength: 50
+          description: Instructions and context for LLM workers - becomes the system prompt
         scope:
           type: string
           enum: [system, global, project]
+          description: Role visibility - system (built-in), global (user-defined, all projects), project (specific project only)
         project_id:
           type: string
-          format: uuid
           nullable: true
+          description: Required if scope=project, null otherwise
         is_active:
           type: boolean
+          default: true
+          description: Whether this role can be assigned to workers
         created_at:
           type: string
           format: date-time
@@ -124,65 +186,78 @@ components:
           format: date-time
         created_by:
           type: string
-          format: uuid
+          description: User ID who created the role
         updated_by:
           type: string
-          format: uuid
+          description: User ID who last updated the role
       required:
         - id
         - name
         - description
-        - rules
+        - goals
         - scope
         - is_active
-        
+
     Task:
       type: object
       properties:
         id:
           type: string
-          format: uuid
+          description: Unique task identifier
         project_id:
           type: string
-          format: uuid
+          description: Project this task belongs to
         title:
           type: string
+          maxLength: 200
+          description: Single-sentence summary
         type:
           type: string
-          enum: [epic, story, task, sub-task, bug, spike]
+          enum: [epic, task, bug, spike, chore]
+          description: Task classification - epic (large work), task (technical work), bug (defect), spike (research), chore (documentation/non-functional)
         description:
           type: string
+          minLength: 10
+          description: Multi-paragraph detailed description
         acceptance_criteria:
           type: string
           nullable: true
+          description: Multi-paragraph definition of done
         parent_id:
           type: string
-          format: uuid
           nullable: true
+          description: Parent task in hierarchy
         epic_id:
           type: string
-          format: uuid
           nullable: true
+          description: Top-level epic this task belongs to (denormalized for queries)
         depends_on_task_id:
           type: string
-          format: uuid
           nullable: true
+          description: Task that must complete before this one can start
         status:
           type: string
           enum: [idle, active]
+          default: idle
+          description: Current working status - idle (no worker assigned), active (worker assigned and working)
         worker_id:
           type: string
-          format: uuid
           nullable: true
+          description: Worker currently assigned to this task (null when idle)
         priority:
           type: string
           enum: [low, medium, high, critical]
+          default: medium
+          description: Urgency level for orchestrator prioritization
         is_complete:
           type: boolean
+          default: false
+          description: True only when task is totally finished and accepted
         completed_at:
           type: string
           format: date-time
           nullable: true
+          description: When task was marked complete (only set when is_complete=true)
         created_at:
           type: string
           format: date-time
@@ -191,20 +266,34 @@ components:
           format: date-time
         created_by:
           type: string
-          format: uuid
+          description: User ID who created the task
         updated_by:
           type: string
-          format: uuid
+          description: User ID who last updated the task
         labels:
           type: array
           items:
             type: string
+          nullable: true
+          description: Tags for categorization and filtering
         estimated_effort:
           type: integer
           nullable: true
+          description: Estimated story points or hours
         actual_effort:
           type: integer
           nullable: true
+          description: Actual time spent (sum of all work sessions)
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskComment'
+          nullable: true
+          description: Array of comments on this task
+        is_deleted:
+          type: boolean
+          default: false
+          description: Soft delete flag
       required:
         - id
         - project_id
@@ -214,35 +303,61 @@ components:
         - status
         - priority
         - is_complete
-        
+
+    TaskComment:
+      type: object
+      properties:
+        text:
+          type: string
+          description: Comment content
+        user_id:
+          type: string
+          description: User who made the comment
+        username:
+          type: string
+          description: Username of commenter
+        created_at:
+          type: string
+          format: date-time
+          description: When comment was created
+      required:
+        - text
+        - user_id
+        - username
+        - created_at
+
     TaskHistory:
       type: object
       properties:
         id:
           type: string
-          format: uuid
+          description: Unique history entry identifier
         task_id:
           type: string
-          format: uuid
+          description: Task this history belongs to
         started_at:
           type: string
           format: date-time
+          description: When work began on this task
         completed_at:
           type: string
           format: date-time
           nullable: true
+          description: When work ended (null if still in progress)
         state:
           type: string
           enum: [success, failure, abandoned, in-progress]
+          description: Outcome of work session - success (completed successfully), failure (attempted but failed), abandoned (stopped without completion), in-progress (currently active)
         worker_id:
           type: string
-          format: uuid
+          description: Worker who performed this work
         role_id:
           type: string
-          format: uuid
+          description: Role the worker was operating under
         notes:
           type: string
           nullable: true
+          description: What was done, learned, or why it failed
         created_at:
           type: string
           format: date-time
@@ -253,17 +368,20 @@ components:
         - state
         - worker_id
         - role_id
-        
-    Config:
+
+    ConfigItem:
       type: object
       properties:
         key:
           type: string
+          description: Configuration key
         value:
           type: string
+          description: Configuration value
         description:
           type: string
           nullable: true
+          description: Human-readable description of this setting
         created_at:
           type: string
           format: date-time
@@ -273,7 +391,33 @@ components:
       required:
         - key
         - value
-        
+
+    WorkerStats:
+      type: object
+      properties:
+        total_tasks:
+          type: integer
+          description: Total number of tasks worked on
+        completed_tasks:
+          type: integer
+          description: Number of successfully completed tasks
+        failed_tasks:
+          type: integer
+          description: Number of failed task attempts
+        active_tasks:
+          type: integer
+          description: Number of currently active tasks
+        success_rate:
+          type: number
+          format: float
+          description: Percentage of successful completions
+      required:
+        - total_tasks
+        - completed_tasks
+        - failed_tasks
+        - active_tasks
+        - success_rate
+
     Heartbeat:
       type: object
       properties:
@@ -281,16 +425,18 @@ components:
           type: string
         user_id:
           type: string
-          format: uuid
+          description: Worker or orchestrator user ID
         status:
           type: string
+          description: Current status (IDLE, WORKING, etc)
         task_id:
           type: string
-          format: uuid
           nullable: true
+          description: Current task being worked on (if any)
         last_seen:
           type: string
           format: date-time
+          description: Last heartbeat timestamp
         created_at:
           type: string
           format: date-time
@@ -300,11 +446,53 @@ components:
         - status
         - last_seen
 
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Session token for subsequent requests
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - token
+        - user
+
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+        password:
+          type: string
+          minLength: 8
+        email:
+          type: string
+          format: email
+          nullable: true
+      required:
+        - username
+        - password
+
 paths:
   /health:
     get:
       summary: Health check
-      description: Returns server health status
+      description: Check if the server is running and responsive
+      tags:
+        - Health
       security: []
       responses:
         '200':
@@ -317,270 +505,116 @@ paths:
                   status:
                     type: string
                     example: ok
-                    
+
   /auth/register:
     post:
-      summary: Register a new user
-      description: Create a new user account (human or worker type)
+      summary: Register new user
+      description: |
+        Create a new user account. Only available if server config `registration.enabled` is true.
+        By default, new users are created as type 'human' with is_active=true.
+      tags:
+        - Authentication
       security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                username:
-                  type: string
-                password:
-                  type: string
-                type:
-                  type: string
-                  enum: [human, worker]
-              required:
-                - username
-                - password
-                - type
+              $ref: '#/components/schemas/RegisterRequest'
       responses:
         '201':
-          description: User created successfully
+          description: User registered successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
         '400':
-          description: Invalid input
+          description: Invalid request (username taken, weak password, etc)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '409':
-          description: Username already exists
+        '403':
+          description: Registration disabled
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
-  /auth/passkey/register/begin:
+
+  /auth/login:
     post:
-      summary: Begin passkey registration
-      description: Start the passkey registration process for the authenticated user
+      summary: Login user
+      description: |
+        Authenticate user and create session. Returns a session token that should be used
+        for subsequent authenticated requests. Session token is valid for the duration
+        configured in `session.duration` (or permanent if `session.duration` is 0).
+      tags:
+        - Authentication
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                username:
-                  type: string
-              required:
-                - username
+              $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: WebAuthn registration options
+          description: Login successful
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  session_id:
-                    type: string
-                  options:
-                    type: object
-        '400':
-          description: Invalid request
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
-  /auth/passkey/register/finish:
+
+  /auth/logout:
     post:
-      summary: Complete passkey registration
-      description: Finish the passkey registration process
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                session_id:
-                  type: string
-                credential:
-                  type: object
-                device_name:
-                  type: string
-              required:
-                - session_id
-                - credential
+      summary: Logout user
+      description: Invalidate the current session token
+      tags:
+        - Authentication
       responses:
         '200':
-          description: Passkey registered successfully
+          description: Logout successful
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status:
-                    type: string
                   message:
                     type: string
-        '400':
-          description: Invalid credential
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
-  /auth/passkey/authenticate/begin:
-    post:
-      summary: Begin passkey authentication
-      description: Start the passkey authentication process
-      security: []
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                username:
-                  type: string
-      responses:
-        '200':
-          description: WebAuthn authentication options
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  session_id:
-                    type: string
-                  options:
-                    type: object
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
-  /auth/passkey/authenticate/finish:
-    post:
-      summary: Complete passkey authentication
-      description: Finish the passkey authentication process and receive authentication tokens
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                session_id:
-                  type: string
-                credential:
-                  type: object
-              required:
-                - session_id
-                - credential
-      responses:
-        '200':
-          description: Authentication successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  token:
-                    type: string
-                  refresh_token:
-                    type: string
-                  expires_at:
-                    type: string
-                    format: date-time
-                  user:
-                    type: object
-        '401':
-          description: Authentication failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
-  /auth/passkey/list:
+                    example: logged out
+
+  /auth/me:
     get:
-      summary: List user's passkeys
-      description: Get all registered passkeys for the authenticated user
+      summary: Get current user
+      description: Returns information about the currently authenticated user
+      tags:
+        - Authentication
       responses:
         '200':
-          description: List of passkeys
+          description: Current user information
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    credential_id:
-                      type: string
-                    attestation_type:
-                      type: string
-                    device_name:
-                      type: string
-                    created_at:
-                      type: string
-                      format: date-time
-                    last_used_at:
-                      type: string
-                      format: date-time
+                $ref: '#/components/schemas/User'
         '401':
-          description: Unauthorized
+          description: Not authenticated
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
-  /auth/passkey:
-    delete:
-      summary: Delete a passkey
-      description: Remove a registered passkey for the authenticated user
-      parameters:
-        - name: id
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        '204':
-          description: Passkey deleted successfully
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Passkey not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
+
   /users:
     get:
       summary: List all users
-      description: Get list of all users (requires authentication)
+      description: List all users in the system (admin only)
+      tags:
+        - Users
       responses:
         '200':
           description: List of users
@@ -590,24 +624,25 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/User'
-        '401':
-          description: Unauthorized
+        '403':
+          description: Forbidden - admin access required
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
   /users/{user_id}:
     get:
       summary: Get user by ID
-      description: Get detailed information about a specific user
+      description: Get a specific user's information
+      tags:
+        - Users
       parameters:
         - name: user_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       responses:
         '200':
           description: User details
@@ -621,11 +656,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
   /users/{username}/enable:
     post:
-      summary: Enable a user
-      description: Enable a disabled user account (admin only)
+      summary: Enable user
+      description: Enable a user, allowing them to login and use the system (admin only)
+      tags:
+        - Users
       parameters:
         - name: username
           in: path
@@ -635,14 +672,12 @@ paths:
       responses:
         '200':
           description: User enabled successfully
-        '401':
-          description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/User'
         '403':
-          description: Forbidden - admin only
+          description: Forbidden - admin access required
           content:
             application/json:
               schema:
@@ -653,11 +688,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
   /users/{username}/disable:
     post:
-      summary: Disable a user
-      description: Disable a user account (admin only)
+      summary: Disable user
+      description: Disable a user, preventing login and all API access. Server will return 401 for disabled users. (admin only)
+      tags:
+        - Users
       parameters:
         - name: username
           in: path
@@ -667,14 +704,12 @@ paths:
       responses:
         '200':
           description: User disabled successfully
-        '401':
-          description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/User'
         '403':
-          description: Forbidden - admin only
+          description: Forbidden - admin access required
           content:
             application/json:
               schema:
@@ -685,18 +720,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
-  /projects:
-    get:
-      summary: List all projects
-      description: Get list of all projects (filtered by visibility and permissions)
+
+  /users/{user_id}/reset-password:
+    post:
+      summary: Reset user password
+      description: Reset a user's password (admin only)
+      tags:
+        - Users
       parameters:
-        - name: status
-          in: query
+        - name: user_id
+          in: path
+          required: true
           schema:
             type: string
-            enum: [active, inactive]
-          description: Filter by project status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  minLength: 8
+              required:
+                - password
+      responses:
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: password reset successfully
+        '403':
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /projects:
+    get:
+      summary: List projects
+      description: List all projects the authenticated user can access
+      tags:
+        - Projects
       responses:
         '200':
           description: List of projects
@@ -706,16 +778,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Project'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
+
     post:
-      summary: Create a new project
+      summary: Create project
       description: Create a new project
+      tags:
+        - Projects
       requestBody:
         required: true
         content:
@@ -725,17 +793,22 @@ paths:
               properties:
                 name:
                   type: string
+                  maxLength: 200
                 description:
                   type: string
+                  minLength: 10
                 repository:
                   type: string
+                  maxLength: 500
                   nullable: true
-                status:
-                  type: string
-                  enum: [active, inactive]
                 visibility:
                   type: string
                   enum: [public, internal, private]
+                  default: public
+                status:
+                  type: string
+                  enum: [active, inactive]
+                  default: active
               required:
                 - name
                 - description
@@ -747,35 +820,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/Project'
         '400':
-          description: Invalid input
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Project name already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
+
   /projects/{project_id}:
     get:
-      summary: Get project by ID
-      description: Get detailed information about a specific project
+      summary: Get project
+      description: Get a specific project by ID
+      tags:
+        - Projects
       parameters:
         - name: project_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       responses:
         '200':
           description: Project details
@@ -789,17 +851,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
     put:
       summary: Update project
-      description: Update an existing project
+      description: Update a project's details
+      tags:
+        - Projects
       parameters:
         - name: project_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       requestBody:
         required: true
         content:
@@ -809,17 +872,20 @@ paths:
               properties:
                 name:
                   type: string
+                  maxLength: 200
                 description:
                   type: string
+                  minLength: 10
                 repository:
                   type: string
+                  maxLength: 500
                   nullable: true
-                status:
-                  type: string
-                  enum: [active, inactive]
                 visibility:
                   type: string
                   enum: [public, internal, private]
+                status:
+                  type: string
+                  enum: [active, inactive]
       responses:
         '200':
           description: Project updated successfully
@@ -828,19 +894,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Project'
         '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden - insufficient permissions
+          description: Invalid request
           content:
             application/json:
               schema:
@@ -851,34 +905,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
     delete:
       summary: Delete project
-      description: Delete a project (must have no tasks)
+      description: |
+        Delete a project. Will fail if tasks exist (must delete tasks first due to RESTRICT constraint).
+      tags:
+        - Projects
       parameters:
         - name: project_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       responses:
         '204':
           description: Project deleted successfully
         '400':
-          description: Cannot delete project with tasks
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden - insufficient permissions
+          description: Cannot delete - project has tasks
           content:
             application/json:
               schema:
@@ -889,24 +933,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
   /roles:
     get:
-      summary: List all roles
-      description: Get list of all roles (system, global, and accessible project roles)
+      summary: List roles
+      description: List all roles accessible to the authenticated user
+      tags:
+        - Roles
       parameters:
         - name: scope
           in: query
+          required: false
           schema:
             type: string
             enum: [system, global, project]
           description: Filter by role scope
         - name: project_id
           in: query
+          required: false
           schema:
             type: string
-            format: uuid
-          description: Filter by project (for project-scoped roles)
+          description: Filter by project ID (for project-scoped roles)
       responses:
         '200':
           description: List of roles
@@ -916,16 +963,14 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Role'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
+
     post:
-      summary: Create a new role
-      description: Create a new global or project-scoped role
+      summary: Create role
+      description: |
+        Create a new role. System roles cannot be created by users (they are built-in).
+        Global roles are available across all projects. Project roles are specific to one project.
+      tags:
+        - Roles
       requestBody:
         required: true
         content:
@@ -935,21 +980,23 @@ paths:
               properties:
                 name:
                   type: string
+                  maxLength: 100
                 description:
                   type: string
-                rules:
+                  minLength: 20
+                goals:
                   type: string
+                  minLength: 50
                 scope:
                   type: string
                   enum: [global, project]
                 project_id:
                   type: string
-                  format: uuid
                   nullable: true
               required:
                 - name
                 - description
-                - rules
+                - goals
                 - scope
       responses:
         '201':
@@ -959,35 +1006,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/Role'
         '400':
-          description: Invalid input
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Role name already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
+
   /roles/{role_id}:
     get:
-      summary: Get role by ID
-      description: Get detailed information about a specific role
+      summary: Get role
+      description: Get a specific role by ID
+      tags:
+        - Roles
       parameters:
         - name: role_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       responses:
         '200':
           description: Role details
@@ -1001,17 +1037,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
     put:
       summary: Update role
-      description: Update an existing role (cannot update system roles)
+      description: |
+        Update a role's details. System roles cannot be modified.
+        Scope cannot be changed after creation.
+      tags:
+        - Roles
       parameters:
         - name: role_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       requestBody:
         required: true
         content:
@@ -1021,10 +1060,13 @@ paths:
               properties:
                 name:
                   type: string
+                  maxLength: 100
                 description:
                   type: string
-                rules:
+                  minLength: 20
+                goals:
                   type: string
+                  minLength: 50
                 is_active:
                   type: boolean
       responses:
@@ -1035,19 +1077,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Role'
         '400':
-          description: Invalid input or cannot modify system role
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden - insufficient permissions
+          description: Invalid request or system role modification attempt
           content:
             application/json:
               schema:
@@ -1058,34 +1088,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
     delete:
       summary: Delete role
-      description: Delete a role (cannot delete system roles or roles in use)
+      description: Delete a role. System roles cannot be deleted.
+      tags:
+        - Roles
       parameters:
         - name: role_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       responses:
         '204':
           description: Role deleted successfully
         '400':
-          description: Cannot delete system role or role in use
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden - insufficient permissions
+          description: Cannot delete system role
           content:
             application/json:
               schema:
@@ -1096,47 +1115,70 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
+  /roles/{role_id}/history:
+    get:
+      summary: Get role history
+      description: Get task history for a specific role - shows all tasks worked on using this role
+      tags:
+        - Roles
+      parameters:
+        - name: role_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Role history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskHistory'
+        '404':
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /tasks:
     get:
       summary: List tasks
-      description: Get list of tasks with optional filters
+      description: |
+        List tasks with optional filters. Does not return full history for each task.
+        Use GET /tasks/{task_id}/history for complete task history.
+      tags:
+        - Tasks
       parameters:
         - name: project_id
           in: query
+          required: false
           schema:
             type: string
-            format: uuid
-          description: Filter by project
+          description: Filter by project ID
         - name: status
           in: query
+          required: false
           schema:
             type: string
             enum: [idle, active]
-          description: Filter by status
+          description: Filter by task status
         - name: type
           in: query
+          required: false
           schema:
             type: string
-            enum: [epic, story, task, sub-task, bug, spike]
+            enum: [epic, task, bug, spike, chore]
           description: Filter by task type
-        - name: worker_id
+        - name: owner
           in: query
+          required: false
           schema:
             type: string
-            format: uuid
-          description: Filter by assigned worker
-        - name: is_complete
-          in: query
-          schema:
-            type: boolean
-          description: Filter by completion status
-        - name: priority
-          in: query
-          schema:
-            type: string
-            enum: [low, medium, high, critical]
-          description: Filter by priority
+          description: Filter by worker_id or created_by
       responses:
         '200':
           description: List of tasks
@@ -1146,16 +1188,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Task'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
+
     post:
-      summary: Create a new task
+      summary: Create task
       description: Create a new task
+      tags:
+        - Tasks
       requestBody:
         required: true
         content:
@@ -1165,39 +1203,28 @@ paths:
               properties:
                 project_id:
                   type: string
-                  format: uuid
                 title:
                   type: string
+                  maxLength: 200
                 type:
                   type: string
-                  enum: [epic, story, task, sub-task, bug, spike]
+                  enum: [epic, task, bug, spike, chore]
                 description:
                   type: string
+                  minLength: 10
                 acceptance_criteria:
                   type: string
                   nullable: true
                 parent_id:
                   type: string
-                  format: uuid
-                  nullable: true
-                epic_id:
-                  type: string
-                  format: uuid
                   nullable: true
                 depends_on_task_id:
                   type: string
-                  format: uuid
                   nullable: true
                 priority:
                   type: string
                   enum: [low, medium, high, critical]
-                labels:
-                  type: array
-                  items:
-                    type: string
-                estimated_effort:
-                  type: integer
-                  nullable: true
+                  default: medium
               required:
                 - project_id
                 - title
@@ -1211,35 +1238,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/Task'
         '400':
-          description: Invalid input
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
+
+  /tasks/request:
+    post:
+      summary: Request task (worker only)
+      description: |
+        Worker requests a task to work on. Returns the task currently assigned to this worker.
+        If no task is assigned, server may assign one or return empty.
+      tags:
+        - Tasks
+      responses:
+        '200':
+          description: Task assigned to worker
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/Task'
+        '204':
+          description: No task available
         '403':
-          description: Forbidden - insufficient permissions
+          description: Forbidden - worker access only
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
   /tasks/{task_id}:
     get:
-      summary: Get task by ID
-      description: Get detailed information about a specific task
+      summary: Get task
+      description: Get a specific task by ID, including full details but not history
+      tags:
+        - Tasks
       parameters:
         - name: task_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       responses:
         '200':
           description: Task details
@@ -1253,17 +1293,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
     put:
       summary: Update task
-      description: Update an existing task
+      description: Update a task's details (title, description, status, etc)
+      tags:
+        - Tasks
       parameters:
         - name: task_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       requestBody:
         required: true
         content:
@@ -1273,25 +1314,26 @@ paths:
               properties:
                 title:
                   type: string
+                  maxLength: 200
                 description:
                   type: string
+                  minLength: 10
                 acceptance_criteria:
                   type: string
                   nullable: true
-                depends_on_task_id:
+                status:
                   type: string
-                  format: uuid
-                  nullable: true
+                  enum: [idle, active]
                 priority:
                   type: string
                   enum: [low, medium, high, critical]
+                depends_on_task_id:
+                  type: string
+                  nullable: true
                 labels:
                   type: array
                   items:
                     type: string
-                estimated_effort:
-                  type: integer
-                  nullable: true
       responses:
         '200':
           description: Task updated successfully
@@ -1300,19 +1342,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Task'
         '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden - insufficient permissions
+          description: Invalid request
           content:
             application/json:
               schema:
@@ -1323,87 +1353,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
     delete:
       summary: Delete task
-      description: Delete a task
+      description: Soft delete a task (sets is_deleted=true)
+      tags:
+        - Tasks
       parameters:
         - name: task_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       responses:
         '204':
           description: Task deleted successfully
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden - insufficient permissions
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '404':
           description: Task not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
-  /tasks/{task_id}/claim:
-    post:
-      summary: Claim a task
-      description: Claim a task for the authenticated user
-      parameters:
-        - name: task_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Task claimed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Task'
-        '400':
-          description: Task already claimed or not in claimable state
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Task not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
+
   /tasks/{task_id}/assign:
     post:
-      summary: Assign a task
-      description: Assign a task to a specific user
+      summary: Assign task (admin/orchestrator only)
+      description: |
+        Assign a task to a specific worker with a specific role.
+        When assigned, task status becomes 'active', worker_id is set, and history entry is created.
+        Normally done by orchestrator, but admins can manually assign.
+      tags:
+        - Tasks
       parameters:
         - name: task_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       requestBody:
         required: true
         content:
@@ -1411,11 +1397,13 @@ paths:
             schema:
               type: object
               properties:
-                user_id:
+                worker_id:
                   type: string
-                  format: uuid
+                role_id:
+                  type: string
               required:
-                - user_id
+                - worker_id
+                - role_id
       responses:
         '200':
           description: Task assigned successfully
@@ -1424,109 +1412,127 @@ paths:
               schema:
                 $ref: '#/components/schemas/Task'
         '400':
-          description: Invalid input or task not in assignable state
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
+        '403':
+          description: Forbidden - admin/orchestrator access required
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '404':
-          description: Task or user not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
-  /tasks/{task_id}/free:
+
+  /tasks/{task_id}/unassign:
     post:
-      summary: Free a task
-      description: Release a task from its current assignment
+      summary: Unassign task (admin/orchestrator only)
+      description: |
+        Remove task from a specific worker. Task status becomes 'idle', worker_id is cleared.
+        Normally done by orchestrator, but admins can manually unassign.
+      tags:
+        - Tasks
       parameters:
         - name: task_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                worker_id:
+                  type: string
+              required:
+                - worker_id
       responses:
         '200':
-          description: Task freed successfully
+          description: Task unassigned successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
-        '400':
-          description: Task not assigned
+        '403':
+          description: Forbidden - admin/orchestrator access required
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
+
+  /tasks/{task_id}/return:
+    post:
+      summary: Return task (worker only)
+      description: |
+        Worker returns a task, marking it as idle and clearing worker assignment.
+        The task can then be reassigned. Current task and role on worker are cleared.
+      tags:
+        - Tasks
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task returned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: task returned
+        '403':
+          description: Forbidden - worker access only
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '404':
-          description: Task not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
+
   /tasks/{task_id}/complete:
     post:
-      summary: Mark task as complete
-      description: Mark a task as complete
+      summary: Complete task
+      description: Mark a task as complete (sets is_complete=true, completed_at timestamp, status=idle, worker_id=null)
+      tags:
+        - Tasks
       parameters:
         - name: task_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       responses:
         '200':
-          description: Task marked as complete
+          description: Task completed successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
         '400':
-          description: Task cannot be completed (dependencies not met)
+          description: Cannot complete - dependencies not met or child tasks incomplete
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Task not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
+
   /tasks/{task_id}/history:
     get:
       summary: Get task history
-      description: Get work history for a specific task
+      description: Get all history entries for a task, showing state changes and worker assignments
+      tags:
+        - Tasks
       parameters:
         - name: task_id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       responses:
         '200':
           description: Task history
@@ -1542,42 +1548,242 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
-  /workers/request:
-    post:
-      summary: Request work
-      description: Request a task to work on (for workers)
+
+  /tasks/{task_id}/comments:
+    get:
+      summary: Get task comments
+      description: Get all comments on a task
+      tags:
+        - Tasks
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
-          description: Task assigned
+          description: Task comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskComment'
+
+    post:
+      summary: Add task comment
+      description: Add a comment to a task. Comment stores text, caller name, and timestamp.
+      tags:
+        - Tasks
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                  minLength: 1
+              required:
+                - comment
+      responses:
+        '201':
+          description: Comment added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /tasks/{task_id}/dependencies:
+    get:
+      summary: Get task dependencies
+      description: Get all tasks that this task depends on and all tasks that depend on this task
+      tags:
+        - Tasks
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task dependencies
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  task:
-                    $ref: '#/components/schemas/Task'
-                  role:
-                    $ref: '#/components/schemas/Role'
-        '204':
-          description: No work available
-        '401':
-          description: Unauthorized
+                  depends_on:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                    description: Tasks this task depends on
+                  blocked_by:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                    description: Tasks that depend on this task
+
+  /workers:
+    get:
+      summary: List workers
+      description: List all workers (users of type 'worker')
+      tags:
+        - Workers
+      responses:
+        '200':
+          description: List of workers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /workers/{worker_id}:
+    get:
+      summary: Get worker
+      description: Get a specific worker by ID
+      tags:
+        - Workers
+      parameters:
+        - name: worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Worker details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Worker not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update worker
+      description: Update worker details (admin only)
+      tags:
+        - Workers
+      parameters:
+        - name: worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_active:
+                  type: boolean
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        '200':
+          description: Worker updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
         '403':
-          description: Forbidden - only workers can request work
+          description: Forbidden - admin access required
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
+  /workers/{worker_id}/tasks:
+    get:
+      summary: Get worker tasks
+      description: Get all tasks assigned to a worker
+      tags:
+        - Workers
+      parameters:
+        - name: worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Worker's tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+
+  /workers/{worker_id}/history:
+    get:
+      summary: Get worker history
+      description: Get task history for a worker - shows all work sessions
+      tags:
+        - Workers
+      parameters:
+        - name: worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Worker history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskHistory'
+
+  /workers/{worker_id}/stats:
+    get:
+      summary: Get worker statistics
+      description: Get statistics for a worker (total tasks, completion rate, etc)
+      tags:
+        - Workers
+      parameters:
+        - name: worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Worker statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerStats'
+
   /workers/heartbeat:
     post:
       summary: Worker heartbeat
-      description: Send heartbeat to indicate worker is alive
+      description: |
+        Worker registers as alive and reports status. If worker doesn't heartbeat within
+        configured `worker.idle` period, server marks worker as IDLE.
+      tags:
+        - Workers
       requestBody:
         required: true
         content:
@@ -1587,25 +1793,33 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: [idle, working]
+                  description: Current worker status
                 task_id:
                   type: string
-                  format: uuid
                   nullable: true
+                  description: Task being worked on (if any)
+              required:
+                - status
       responses:
         '200':
           description: Heartbeat acknowledged
-        '401':
-          description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-                
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: heartbeat received
+
   /orchestrator/heartbeat:
     post:
       summary: Orchestrator heartbeat
-      description: Send heartbeat to indicate orchestrator is alive
+      description: |
+        Orchestrator registers as alive. If orchestrator doesn't heartbeat within
+        configured `orchestrator.idle` period, server marks orchestrator as IDLE.
+      tags:
+        - Orchestrator
       requestBody:
         required: true
         content:
@@ -1615,21 +1829,27 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: [active, idle]
+                  description: Current orchestrator status
+              required:
+                - status
       responses:
         '200':
           description: Heartbeat acknowledged
-        '401':
-          description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-                
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: heartbeat received
+
   /heartbeats:
     get:
-      summary: List all heartbeats
-      description: Get heartbeat status of all workers and orchestrators for monitoring
+      summary: List heartbeats
+      description: List all worker and orchestrator heartbeats for monitoring
+      tags:
+        - Health
       responses:
         '200':
           description: List of heartbeats
@@ -1639,37 +1859,35 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Heartbeat'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-                
+
   /config:
     get:
       summary: List all configuration
-      description: Get all configuration key-value pairs
+      description: Get all configuration key-value pairs (admin only)
+      tags:
+        - Config
       responses:
         '200':
-          description: List of configuration
+          description: List of configuration items
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Config'
-        '401':
-          description: Unauthorized
+                  $ref: '#/components/schemas/ConfigItem'
+        '403':
+          description: Forbidden - admin access required
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
   /config/{key}:
     get:
       summary: Get configuration value
-      description: Get a specific configuration value
+      description: Get a specific configuration value by key (admin only)
+      tags:
+        - Config
       parameters:
         - name: key
           in: path
@@ -1682,17 +1900,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Config'
+                $ref: '#/components/schemas/ConfigItem'
+        '403':
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Configuration key not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
     put:
       summary: Set configuration value
       description: Set or update a configuration value (admin only)
+      tags:
+        - Config
       parameters:
         - name: key
           in: path
@@ -1715,27 +1941,23 @@ paths:
                 - value
       responses:
         '200':
-          description: Configuration updated
+          description: Configuration set successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Config'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ConfigItem'
         '403':
-          description: Forbidden - admin only
+          description: Forbidden - admin access required
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-                
+
     delete:
-      summary: Delete configuration
-      description: Delete a configuration key-value pair (admin only)
+      summary: Delete configuration value
+      description: Delete a configuration key (admin only)
+      tags:
+        - Config
       parameters:
         - name: key
           in: path
@@ -1744,22 +1966,148 @@ paths:
             type: string
       responses:
         '204':
-          description: Configuration deleted
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          description: Configuration deleted successfully
         '403':
-          description: Forbidden - admin only
+          description: Forbidden - admin access required
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '404':
-          description: Configuration key not found
+
+  /auth/passkey/register/begin:
+    post:
+      summary: Begin passkey registration
+      description: Start WebAuthn passkey registration process
+      tags:
+        - Passkeys
+      responses:
+        '200':
+          description: Registration challenge
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                type: object
+                description: WebAuthn credential creation options
+
+  /auth/passkey/register/finish:
+    post:
+      summary: Finish passkey registration
+      description: Complete WebAuthn passkey registration
+      tags:
+        - Passkeys
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: WebAuthn credential response
+      responses:
+        '200':
+          description: Passkey registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /auth/passkey/authenticate/begin:
+    post:
+      summary: Begin passkey authentication
+      description: Start WebAuthn passkey authentication process
+      tags:
+        - Passkeys
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+              required:
+                - username
+      responses:
+        '200':
+          description: Authentication challenge
+          content:
+            application/json:
+              schema:
+                type: object
+                description: WebAuthn credential request options
+
+  /auth/passkey/authenticate/finish:
+    post:
+      summary: Finish passkey authentication
+      description: Complete WebAuthn passkey authentication and create session
+      tags:
+        - Passkeys
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: WebAuthn authentication response
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /auth/passkey/list:
+    get:
+      summary: List user passkeys
+      description: List all registered passkeys for the authenticated user
+      tags:
+        - Passkeys
+      responses:
+        '200':
+          description: List of registered passkeys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    device_name:
+                      type: string
+                      nullable: true
+                    created_at:
+                      type: string
+                      format: date-time
+                    last_used_at:
+                      type: string
+                      format: date-time
+                      nullable: true
+
+  /auth/passkey:
+    delete:
+      summary: Delete passkey
+      description: Delete a registered passkey
+      tags:
+        - Passkeys
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                credential_id:
+                  type: string
+              required:
+                - credential_id
+      responses:
+        '204':
+          description: Passkey deleted successfully

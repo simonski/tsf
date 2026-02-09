@@ -122,6 +122,121 @@ const Dialog = {
                 { text: 'OK', primary: true }
             ]
         });
+    },
+
+    customForm(title, fields) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('custom-dialog');
+            const titleEl = document.getElementById('dialog-title');
+            const messageEl = document.getElementById('dialog-message');
+            const inputEl = document.getElementById('dialog-input');
+            const buttonsEl = document.getElementById('dialog-buttons');
+            const iconEl = document.getElementById('dialog-icon');
+            
+            titleEl.textContent = title;
+            iconEl.className = 'dialog-icon edit';
+            iconEl.textContent = '\u270f\ufe0f';
+            
+            // Hide default message and input
+            messageEl.classList.add('hidden');
+            inputEl.classList.add('hidden');
+            
+            // Create form
+            const formContainer = document.createElement('div');
+            formContainer.className = 'dialog-form';
+            formContainer.id = 'dialog-form-container';
+            
+            fields.forEach(field => {
+                const fieldGroup = document.createElement('div');
+                fieldGroup.className = 'dialog-field-group';
+                
+                const label = document.createElement('label');
+                label.textContent = field.label + (field.required ? ' *' : '');
+                label.className = 'dialog-field-label';
+                fieldGroup.appendChild(label);
+                
+                let input;
+                if (field.type === 'textarea') {
+                    input = document.createElement('textarea');
+                    input.rows = 3;
+                } else {
+                    input = document.createElement('input');
+                    input.type = field.type || 'text';
+                }
+                
+                input.name = field.name;
+                input.className = 'dialog-field-input';
+                input.placeholder = field.placeholder || '';
+                input.value = field.value || '';
+                input.required = field.required || false;
+                
+                fieldGroup.appendChild(input);
+                formContainer.appendChild(fieldGroup);
+            });
+            
+            messageEl.parentNode.insertBefore(formContainer, buttonsEl);
+            
+            // Create buttons
+            buttonsEl.innerHTML = '';
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.className = 'dialog-button dialog-button-secondary';
+            cancelBtn.onclick = () => {
+                overlay.classList.add('hidden');
+                formContainer.remove();
+                resolve(null);
+            };
+            
+            const submitBtn = document.createElement('button');
+            submitBtn.textContent = 'Save';
+            submitBtn.className = 'dialog-button dialog-button-primary';
+            submitBtn.onclick = () => {
+                // Collect form values
+                const result = {};
+                let valid = true;
+                
+                fields.forEach(field => {
+                    const input = formContainer.querySelector(`[name=\"${field.name}\"]`);
+                    const value = input.value.trim();
+                    
+                    if (field.required && !value) {
+                        input.style.borderColor = '#ef4444';
+                        valid = false;
+                    } else {
+                        input.style.borderColor = '';
+                        result[field.name] = value;
+                    }
+                });
+                
+                if (!valid) return;
+                
+                overlay.classList.add('hidden');
+                formContainer.remove();
+                resolve(result);
+            };
+            
+            buttonsEl.appendChild(cancelBtn);
+            buttonsEl.appendChild(submitBtn);
+            
+            overlay.classList.remove('hidden');
+            
+            // Focus first input
+            setTimeout(() => {
+                const firstInput = formContainer.querySelector('input, textarea');
+                if (firstInput) firstInput.focus();
+            }, 100);
+            
+            // Handle Enter key on inputs (not textareas)
+            formContainer.querySelectorAll('input').forEach(input => {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        submitBtn.click();
+                    }
+                });
+            });
+        });
     }
 };
 
@@ -197,14 +312,15 @@ async function login(username, password) {
         state.currentUser = user;
         localStorage.setItem('credentials', JSON.stringify(state.credentials));
         
-        // Show/hide config link based on admin status
+        // Show/hide config and users links based on admin status
         const configNav = document.getElementById('nav-config');
-        if (configNav) {
-            if (user.username === 'admin') {
-                configNav.classList.remove('hidden');
-            } else {
-                configNav.classList.add('hidden');
-            }
+        const usersNav = document.getElementById('nav-users');
+        if (user.username === 'admin') {
+            if (configNav) configNav.classList.remove('hidden');
+            if (usersNav) usersNav.classList.remove('hidden');
+        } else {
+            if (configNav) configNav.classList.add('hidden');
+            if (usersNav) usersNav.classList.add('hidden');
         }
         
         await loadProjects();
@@ -685,23 +801,23 @@ async function loadConfigList() {
 }
 
 async function addConfig() {
-    const key = await Dialog.prompt('New Config Key', 'Enter the configuration key:');
-    if (!key || !key.trim()) return;
+    const result = await Dialog.customForm('New Configuration', [
+        { label: 'Key', name: 'key', type: 'text', required: true, placeholder: 'config.key.name' },
+        { label: 'Value', name: 'value', type: 'text', required: true, placeholder: 'value' },
+        { label: 'Description', name: 'description', type: 'textarea', required: false, placeholder: 'Optional description' }
+    ]);
     
-    const value = await Dialog.prompt('Config Value', 'Enter the value:');
-    if (!value || !value.trim()) return;
-    
-    const description = await Dialog.prompt('Description (Optional)', 'Enter a description:');
+    if (!result) return;
     
     try {
-        await apiRequest(`/config/${encodeURIComponent(key)}`, {
+        await apiRequest(`/config/${encodeURIComponent(result.key)}`, {
             method: 'PUT',
             body: JSON.stringify({
-                value: value,
-                description: description && description.trim() ? description : null
+                value: result.value,
+                description: result.description || null
             })
         });
-        await Dialog.success('Config Added', `Configuration "${key}" has been created.`);
+        await Dialog.success('Config Added', `Configuration "${result.key}" has been created.`);
         await loadConfigList();
     } catch (error) {
         await Dialog.error('Failed to Add Config', error.message);
@@ -712,16 +828,18 @@ async function editConfig(key) {
     try {
         const cfg = await apiRequest(`/config/${encodeURIComponent(key)}`);
         
-        const newValue = await Dialog.prompt('Edit Value', `Enter new value for "${key}":`, cfg.value);
-        if (newValue === null) return;
+        const result = await Dialog.customForm(`Edit Configuration: ${key}`, [
+            { label: 'Value', name: 'value', type: 'text', required: true, value: cfg.value },
+            { label: 'Description', name: 'description', type: 'textarea', required: false, value: cfg.description || '' }
+        ]);
         
-        const newDescription = await Dialog.prompt('Edit Description', 'Enter new description (optional):', cfg.description || '');
+        if (!result) return;
         
         await apiRequest(`/config/${encodeURIComponent(key)}`, {
             method: 'PUT',
             body: JSON.stringify({
-                value: newValue,
-                description: newDescription && newDescription.trim() ? newDescription : null
+                value: result.value,
+                description: result.description || null
             })
         });
         await Dialog.success('Config Updated', `Configuration "${key}" has been updated.`);
@@ -947,6 +1065,467 @@ async function initializeSession() {
     }
 }
 
+// Projects Screen
+async function showProjects() {
+    showScreen('projects-screen');
+    await loadProjectsList();
+}
+
+async function loadProjectsList() {
+    const container = document.getElementById('projects-list');
+    hideError('projects-error');
+    
+    try {
+        const projects = await apiRequest('/projects');
+        
+        if (!projects || projects.length === 0) {
+            container.innerHTML = '<div class="empty-message">No projects found. Create your first project!</div>';
+            return;
+        }
+        
+        container.innerHTML = projects.map(project => {
+            const statusClass = project.status === 'active' ? 'active' : 'inactive';
+            const visibilityIcon = project.visibility === 'public' ? '🌐' : project.visibility === 'private' ? '🔒' : '👥';
+            
+            return `
+                <div class="project-card" data-project-id="${project.id}">
+                    <div class="project-header">
+                        <h3>${escapeHtml(project.name)}</h3>
+                        <div class="project-badges">
+                            <span class="status-badge status-${statusClass}">${project.status}</span>
+                            <span class="visibility-badge" title="${project.visibility}">${visibilityIcon}</span>
+                        </div>
+                    </div>
+                    <p class="project-description">${escapeHtml(project.description || '')}</p>
+                    ${project.repository ? `<div class="project-repo">📁 ${escapeHtml(project.repository)}</div>` : ''}
+                    <div class="project-actions">
+                        <button class="btn-view-kanban" data-project-id="${project.id}">View Kanban</button>
+                        <button class="btn-edit-project" data-project-id="${project.id}">Edit</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        // Add event listeners to kanban buttons
+        document.querySelectorAll('.btn-view-kanban').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const projectId = e.target.dataset.projectId;
+                const projectSelector = document.getElementById('project-selector');
+                projectSelector.value = projectId;
+                showScreen('board-screen');
+            });
+        });
+        
+        // Add event listeners to edit buttons
+        document.querySelectorAll('.btn-edit-project').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const projectId = e.target.dataset.projectId;
+                const project = projects.find(p => p.id === projectId);
+                if (project) {
+                    await editProject(project);
+                }
+            });
+        });
+    } catch (error) {
+        showError('projects-error', error.message);
+        container.innerHTML = '<div class="error-message">Failed to load projects.</div>';
+    }
+}
+
+async function editProject(project) {
+    const fields = [
+        { name: 'name', label: 'Project Name', type: 'text', value: project.name, required: true },
+        { name: 'description', label: 'Description', type: 'textarea', value: project.description || '' },
+        { name: 'repository', label: 'Repository URL', type: 'text', value: project.repository || '' },
+        { name: 'status', label: 'Status', type: 'select', value: project.status, options: [{value: 'active', label: 'Active'}, {value: 'inactive', label: 'Inactive'}] },
+        { name: 'visibility', label: 'Visibility', type: 'select', value: project.visibility, options: [{value: 'public', label: 'Public'}, {value: 'internal', label: 'Internal'}, {value: 'private', label: 'Private'}] }
+    ];
+    
+    const result = await Dialog.customForm('Edit Project', fields);
+    if (result) {
+        try {
+            await apiRequest(`/projects/${project.id}`, 'PUT', result);
+            await Dialog.success('Success', 'Project updated successfully');
+            await loadProjectsList();
+        } catch (error) {
+            await Dialog.error('Error', error.message);
+        }
+    }
+}
+
+// Workers Screen
+async function showWorkers() {
+    showScreen('workers-screen');
+    await loadWorkersList();
+}
+
+async function loadWorkersList() {
+    const container = document.getElementById('workers-list');
+    hideError('workers-error');
+    
+    try {
+        const workers = await apiRequest('/workers');
+        
+        if (!workers || workers.length === 0) {
+            container.innerHTML = '<div class="empty-message">No workers found.</div>';
+            return;
+        }
+        
+        container.innerHTML = workers.map(worker => {
+            const status = worker.status || 'offline';
+            const lastSeen = worker.last_seen ? new Date(worker.last_seen).toLocaleString() : 'Never';
+            
+            return `
+                <div class="worker-card">
+                    <div class="worker-header">
+                        <h3>${escapeHtml(worker.username)}</h3>
+                        <span class="status-badge status-${status.toLowerCase()}">${status}</span>
+                    </div>
+                    <div class="worker-info">
+                        <div class="worker-info-item">
+                            <span class="label">Status:</span>
+                            <span class="value">${status}</span>
+                        </div>
+                        <div class="worker-info-item">
+                            <span class="label">Last Seen:</span>
+                            <span class="value">${lastSeen}</span>
+                        </div>
+                        <div class="worker-info-item">
+                            <span class="label">Current Task:</span>
+                            <span class="value">${worker.current_task || 'None'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        showError('workers-error', error.message);
+        container.innerHTML = '<div class="error-message">Failed to load workers.</div>';
+    }
+}
+
+// Orchestrators Screen
+async function showOrchestrators() {
+    showScreen('orchestrators-screen');
+    await loadOrchestratorsList();
+}
+
+async function loadOrchestratorsList() {
+    const container = document.getElementById('orchestrators-list');
+    hideError('orchestrators-error');
+    
+    try {
+        const users = await apiRequest('/users');
+        const orchestrators = users.filter(u => u.type === 'orchestrator');
+        
+        if (!orchestrators || orchestrators.length === 0) {
+            container.innerHTML = '<div class="empty-message">No orchestrators found.</div>';
+            return;
+        }
+        
+        container.innerHTML = orchestrators.map(orch => {
+            const status = orch.is_active ? 'active' : 'inactive';
+            
+            return `
+                <div class="orchestrator-card">
+                    <div class="orchestrator-header">
+                        <h3>${escapeHtml(orch.username)}</h3>
+                        <span class="status-badge status-${status.toLowerCase()}">${status}</span>
+                    </div>
+                    <div class="orchestrator-info">
+                        <div class="orchestrator-info-item">
+                            <span class="label">Type:</span>
+                            <span class="value">Orchestrator</span>
+                        </div>
+                        <div class="orchestrator-info-item">
+                            <span class="label">Status:</span>
+                            <span class="value">${orch.is_active ? 'Active' : 'Inactive'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        showError('orchestrators-error', error.message);
+        container.innerHTML = '<div class="error-message">Failed to load orchestrators.</div>';
+    }
+}
+
+// Users Screen (Admin Only)
+async function showUsers() {
+    showScreen('users-screen');
+    await loadUsersList();
+}
+
+async function loadUsersList() {
+    const container = document.getElementById('users-list');
+    hideError('users-error');
+    
+    try {
+        const users = await apiRequest('/users');
+        
+        if (!users || users.length === 0) {
+            container.innerHTML = '<div class="empty-message">No users found.</div>';
+            return;
+        }
+        
+        container.innerHTML = users.map(user => {
+            const statusClass = user.is_active ? 'active' : 'inactive';
+            const typeIcon = user.type === 'human' ? '👤' : user.type === 'worker' ? '🤖' : '🏛️';
+            
+            return `
+                <div class="user-card">
+                    <div class="user-header">
+                        <h3>${typeIcon} ${escapeHtml(user.username)}</h3>
+                        <span class="status-badge status-${statusClass}">${user.is_active ? 'Active' : 'Inactive'}</span>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-info-item">
+                            <span class="label">Type:</span>
+                            <span class="value">${user.type}</span>
+                        </div>
+                        <div class="user-info-item">
+                            <span class="label">Created:</span>
+                            <span class="value">${new Date(user.created_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="btn-edit-user" data-user-id="${user.id}">Edit</button>
+                        <button class="btn-toggle-user" data-user-id="${user.id}" data-active="${user.is_active}">
+                            ${user.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        // Add event listeners
+        document.querySelectorAll('.btn-edit-user').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const userId = e.target.dataset.userId;
+                const user = users.find(u => u.id === userId);
+                if (user) {
+                    await editUser(user);
+                }
+            });
+        });
+        
+        document.querySelectorAll('.btn-toggle-user').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const userId = e.target.dataset.userId;
+                const isActive = e.target.dataset.active === 'true';
+                await toggleUserStatus(userId, !isActive);
+            });
+        });
+    } catch (error) {
+        showError('users-error', error.message);
+        container.innerHTML = '<div class="error-message">Failed to load users.</div>';
+    }
+}
+
+async function editUser(user) {
+    const fields = [
+        { name: 'username', label: 'Username', type: 'text', value: user.username, required: true },
+        { name: 'type', label: 'Type', type: 'select', value: user.type, options: [
+            {value: 'human', label: 'Human'},
+            {value: 'worker', label: 'Worker'},
+            {value: 'orchestrator', label: 'Orchestrator'}
+        ]},
+        { name: 'password', label: 'New Password (leave empty to keep current)', type: 'password' }
+    ];
+    
+    const result = await Dialog.customForm('Edit User', fields);
+    if (result) {
+        try {
+            const updateData = {
+                username: result.username,
+                type: result.type
+            };
+            if (result.password) {
+                updateData.password = result.password;
+            }
+            await apiRequest(`/users/${user.id}`, 'PUT', updateData);
+            await Dialog.success('Success', 'User updated successfully');
+            await loadUsersList();
+        } catch (error) {
+            await Dialog.error('Error', error.message);
+        }
+    }
+}
+
+async function toggleUserStatus(userId, isActive) {
+    try {
+        await apiRequest(`/users/${userId}`, 'PUT', { is_active: isActive });
+        await loadUsersList();
+    } catch (error) {
+        await Dialog.error('Error', error.message);
+    }
+}
+
+// Users Screen (Admin Only)
+async function showUsers() {
+    showScreen('users-screen');
+    await loadUsersList();
+}
+
+async function loadUsersList() {
+    const container = document.getElementById('users-list');
+    hideError('users-error');
+    
+    try {
+        const users = await apiRequest('/users');
+        
+        if (!users || users.length === 0) {
+            container.innerHTML = '<div class="empty-message">No users found.</div>';
+            return;
+        }
+        
+        container.innerHTML = users.map(user => {
+            const statusClass = user.is_active ? 'active' : 'inactive';
+            const typeIcon = user.type === 'human' ? '👤' : user.type === 'worker' ? '🤖' : '🏛️';
+            
+            return `
+                <div class="user-card">
+                    <div class="user-header">
+                        <h3>${typeIcon} ${escapeHtml(user.username)}</h3>
+                        <span class="status-badge status-${statusClass}">${user.is_active ? 'Active' : 'Inactive'}</span>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-info-item">
+                            <span class="label">Type:</span>
+                            <span class="value">${user.type}</span>
+                        </div>
+                        <div class="user-info-item">
+                            <span class="label">Created:</span>
+                            <span class="value">${new Date(user.created_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="btn-edit-user" data-user-id="${user.id}">Edit</button>
+                        <button class="btn-toggle-user" data-user-id="${user.id}" data-active="${user.is_active}">
+                            ${user.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        // Add event listeners
+        document.querySelectorAll('.btn-edit-user').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const userId = e.target.dataset.userId;
+                const user = users.find(u => u.id === userId);
+                if (user) {
+                    await editUser(user);
+                }
+            });
+        });
+        
+        document.querySelectorAll('.btn-toggle-user').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const userId = e.target.dataset.userId;
+                const isActive = e.target.dataset.active === 'true';
+                await toggleUserStatus(userId, !isActive);
+            });
+        });
+    } catch (error) {
+        showError('users-error', error.message);
+        container.innerHTML = '<div class="error-message">Failed to load users.</div>';
+    }
+}
+
+async function editUser(user) {
+    const fields = [
+        { name: 'username', label: 'Username', type: 'text', value: user.username, required: true },
+        { name: 'type', label: 'Type', type: 'select', value: user.type, options: [
+            {value: 'human', label: 'Human'},
+            {value: 'worker', label: 'Worker'},
+            {value: 'orchestrator', label: 'Orchestrator'}
+        ]},
+        { name: 'password', label: 'New Password (leave empty to keep current)', type: 'password' }
+    ];
+    
+    const result = await Dialog.customForm('Edit User', fields);
+    if (result) {
+        try {
+            const updateData = {
+                username: result.username,
+                type: result.type
+            };
+            if (result.password) {
+                updateData.password = result.password;
+            }
+            await apiRequest(`/users/${user.id}`, 'PUT', updateData);
+            await Dialog.success('Success', 'User updated successfully');
+            await loadUsersList();
+        } catch (error) {
+            await Dialog.error('Error', error.message);
+        }
+    }
+}
+
+async function toggleUserStatus(userId, isActive) {
+    try {
+        await apiRequest(`/users/${userId}`, 'PUT', { is_active: isActive });
+        await loadUsersList();
+    } catch (error) {
+        await Dialog.error('Error', error.message);
+    }
+}
+
+// Activity Screen
+async function showActivity() {
+    showScreen('activity-screen');
+    await loadActivityFeed();
+}
+
+async function loadActivityFeed() {
+    const container = document.getElementById('activity-feed');
+    hideError('activity-error');
+    
+    try {
+        const heartbeats = await apiRequest('/heartbeats');
+        
+        if (!heartbeats || heartbeats.length === 0) {
+            container.innerHTML = '<div class="empty-message">No recent activity.</div>';
+            return;
+        }
+        
+        // Sort by last_seen descending
+        heartbeats.sort((a, b) => new Date(b.last_seen) - new Date(a.last_seen));
+        
+        container.innerHTML = heartbeats.map(hb => {
+            const timeAgo = getTimeAgo(new Date(hb.last_seen));
+            
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <span class="status-dot status-${hb.status.toLowerCase()}"></span>
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-user">${escapeHtml(hb.user_id)}</div>
+                        <div class="activity-status">${hb.status}</div>
+                        ${hb.task_id ? `<div class="activity-task">Working on: ${hb.task_id}</div>` : ''}
+                        <div class="activity-time">${timeAgo}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        showError('activity-error', error.message);
+        container.innerHTML = '<div class="error-message">Failed to load activity.</div>';
+    }
+}
+
+function getTimeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    
+    if (seconds < 60) return `${seconds} seconds ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+    return `${Math.floor(seconds / 86400)} days ago`;
+}
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     // Try to restore session from JWT token
@@ -1082,7 +1661,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('nav-projects').addEventListener('click', (e) => {
         e.preventDefault();
         closeNav();
-        // Already on projects screen
+        showProjects();
+    });
+    
+    document.getElementById('nav-kanban').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeNav();
+        showScreen('board-screen');
     });
     
     document.getElementById('nav-overview').addEventListener('click', (e) => {
@@ -1091,10 +1676,28 @@ document.addEventListener('DOMContentLoaded', () => {
         showOverview();
     });
     
+    document.getElementById('nav-workers').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeNav();
+        showWorkers();
+    });
+    
+    document.getElementById('nav-orchestrators').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeNav();
+        showOrchestrators();
+    });
+    
+    document.getElementById('nav-activity').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeNav();
+        showActivity();
+    });
+    
     document.getElementById('nav-users').addEventListener('click', (e) => {
         e.preventDefault();
         closeNav();
-        Dialog.alert('Coming Soon', 'Users management will be available in a future update.', 'info');
+        showUsers();
     });
     
     document.getElementById('nav-config').addEventListener('click', (e) => {
@@ -1115,6 +1718,23 @@ document.addEventListener('DOMContentLoaded', () => {
         logout();
     });
     
+    // Logo links (go to home/projects screen)
+    const logoLink = document.getElementById('logo-link');
+    if (logoLink) {
+        logoLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showScreen('board-screen');
+        });
+    }
+    
+    // Add logo click handlers for all screens
+    document.querySelectorAll('.logo-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            showScreen('board-screen');
+        });
+    });
+    
     // Overview Screen
     const overviewMenuToggle = document.getElementById('overview-menu-toggle');
     const overviewLogoutButton = document.getElementById('overview-logout-button');
@@ -1127,17 +1747,17 @@ document.addEventListener('DOMContentLoaded', () => {
         overviewLogoutButton.addEventListener('click', logout);
     }
     
-    // Settings Screen
-    const settingsMenuToggle = document.getElementById('settings-menu-toggle');
-    const settingsLogoutButton = document.getElementById('settings-logout-button');
+    // Profile Screen
+    const profileMenuToggle = document.getElementById('profile-menu-toggle');
+    const profileLogoutButton = document.getElementById('profile-logout-button');
     const registerPasskeyButton = document.getElementById('register-passkey-button');
     
-    if (settingsMenuToggle) {
-        settingsMenuToggle.addEventListener('click', openNav);
+    if (profileMenuToggle) {
+        profileMenuToggle.addEventListener('click', openNav);
     }
     
-    if (settingsLogoutButton) {
-        settingsLogoutButton.addEventListener('click', logout);
+    if (profileLogoutButton) {
+        profileLogoutButton.addEventListener('click', logout);
     }
     
     if (registerPasskeyButton) {
@@ -1157,6 +1777,101 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Profile Links
+    const profileLinks = [
+        'board-profile-link',
+        'overview-profile-link',
+        'projects-profile-link',
+        'workers-profile-link',
+        'orchestrators-profile-link',
+        'activity-profile-link',
+        'users-profile-link'
+    ];
+    
+    profileLinks.forEach(linkId => {
+        const link = document.getElementById(linkId);
+        if (link) {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                showScreen('profile-screen');
+                loadPasskeys();
+            });
+        }
+    });
+    
+    // Projects Screen
+    const projectsMenuToggle = document.getElementById('projects-menu-toggle');
+    const projectsLogoutButton = document.getElementById('projects-logout-button');
+    const addProjectButton = document.getElementById('add-project-button');
+    
+    if (projectsMenuToggle) {
+        projectsMenuToggle.addEventListener('click', openNav);
+    }
+    
+    if (projectsLogoutButton) {
+        projectsLogoutButton.addEventListener('click', logout);
+    }
+    
+    if (addProjectButton) {
+        addProjectButton.addEventListener('click', async () => {
+            const fields = [
+                { name: 'name', label: 'Project Name', type: 'text', required: true },
+                { name: 'description', label: 'Description', type: 'textarea' },
+                { name: 'repository', label: 'Repository URL', type: 'text' },
+                { name: 'visibility', label: 'Visibility', type: 'select', value: 'public', options: [{value: 'public', label: 'Public'}, {value: 'internal', label: 'Internal'}, {value: 'private', label: 'Private'}] }
+            ];
+            
+            const result = await Dialog.customForm('New Project', fields);
+            if (result) {
+                try {
+                    await apiRequest('/projects', 'POST', result);
+                    await Dialog.success('Success', 'Project created successfully');
+                    await loadProjectsList();
+                } catch (error) {
+                    await Dialog.error('Error', error.message);
+                }
+            }
+        });
+    }
+    
+    // Users Screen
+    const usersMenuToggle = document.getElementById('users-menu-toggle');
+    const usersLogoutButton = document.getElementById('users-logout-button');
+    const addUserButton = document.getElementById('add-user-button');
+    
+    if (usersMenuToggle) {
+        usersMenuToggle.addEventListener('click', openNav);
+    }
+    
+    if (usersLogoutButton) {
+        usersLogoutButton.addEventListener('click', logout);
+    }
+    
+    if (addUserButton) {
+        addUserButton.addEventListener('click', async () => {
+            const fields = [
+                { name: 'username', label: 'Username', type: 'text', required: true },
+                { name: 'password', label: 'Password', type: 'password', required: true },
+                { name: 'type', label: 'Type', type: 'select', value: 'human', options: [
+                    {value: 'human', label: 'Human'},
+                    {value: 'worker', label: 'Worker'},
+                    {value: 'orchestrator', label: 'Orchestrator'}
+                ]}
+            ];
+            
+            const result = await Dialog.customForm('New User', fields);
+            if (result) {
+                try {
+                    await apiRequest('/users', 'POST', result);
+                    await Dialog.success('Success', 'User created successfully');
+                    await loadUsersList();
+                } catch (error) {
+                    await Dialog.error('Error', error.message);
+                }
+            }
+        });
+    }
+    
     // Config Screen
     const configMenuToggle = document.getElementById('config-menu-toggle');
     const configLogoutButton = document.getElementById('config-logout-button');
@@ -1172,6 +1887,47 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (addConfigButton) {
         addConfigButton.addEventListener('click', addConfig);
+    }
+    
+    // Workers Screen
+    const workersMenuToggle = document.getElementById('workers-menu-toggle');
+    const workersLogoutButton = document.getElementById('workers-logout-button');
+    
+    if (workersMenuToggle) {
+        workersMenuToggle.addEventListener('click', openNav);
+    }
+    
+    if (workersLogoutButton) {
+        workersLogoutButton.addEventListener('click', logout);
+    }
+    
+    // Orchestrators Screen
+    const orchestratorsMenuToggle = document.getElementById('orchestrators-menu-toggle');
+    const orchestratorsLogoutButton = document.getElementById('orchestrators-logout-button');
+    
+    if (orchestratorsMenuToggle) {
+        orchestratorsMenuToggle.addEventListener('click', openNav);
+    }
+    
+    if (orchestratorsLogoutButton) {
+        orchestratorsLogoutButton.addEventListener('click', logout);
+    }
+    
+    // Activity Screen
+    const activityMenuToggle = document.getElementById('activity-menu-toggle');
+    const activityLogoutButton = document.getElementById('activity-logout-button');
+    const activityRefreshButton = document.getElementById('activity-refresh-button');
+    
+    if (activityMenuToggle) {
+        activityMenuToggle.addEventListener('click', openNav);
+    }
+    
+    if (activityLogoutButton) {
+        activityLogoutButton.addEventListener('click', logout);
+    }
+    
+    if (activityRefreshButton) {
+        activityRefreshButton.addEventListener('click', loadActivityFeed);
     }
     
     // Auto-login from localStorage

@@ -109,8 +109,17 @@ cd task
 # Build the binary
 make build
 
-# Initialize database
+# Initialize database with random passwords
 sf initdb -f ~/.config/sf/sf.db
+
+# Or initialize with a specific password for all users
+sf initdb -f ~/.config/sf/sf.db --password mypassword
+
+# Populate with additional data from scripts/initdb/*.md
+sf initdb -f ~/.config/sf/sf.db --populate
+
+# Force rebuild (removes existing database)
+sf initdb -f ~/.config/sf/sf.db --force
 
 # Start server
 sf server -f ~/.config/sf/sf.db -port 8080
@@ -118,9 +127,10 @@ sf server -f ~/.config/sf/sf.db -port 8080
 
 The web UI will be available at http://localhost:8080
 
-Default credentials:
-- Username: `admin`
-- Password: `admin123`
+**Credentials:**
+- If you used `--password`, all users (admin, user, worker, orchestrator) will have that password
+- If you didn't use `--password`, random passwords are generated and printed to stdout during initialization
+- If you used `--populate`, additional users/projects/roles from embedded data files will be created
 
 ### Using Docker
 
