@@ -83,7 +83,7 @@ tests/e2e/
 
 The tests are configured to:
 - Run on Chromium, Firefox, and WebKit
-- Automatically start the SF server on port 8080
+- Automatically start the SF server on port 10606
 - Use a test database (`sf.test.db`)
 - Take screenshots on failure
 - Record traces on retry

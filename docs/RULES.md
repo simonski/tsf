@@ -1,5 +1,7 @@
 ## Workflow Commands
 
+- never use /tmp as a path, use `$CWD/tmp`
+
 ### "review"
 Typing "review" means read all the documentation and make suggestions on the overall design, call out contraditions and generally assess and ask questions but do not write any files.
 

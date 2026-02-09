@@ -487,7 +487,7 @@ components:
         - password
 
 paths:
-  /health:
+  /api/v1/health:
     get:
       summary: Health check
       description: Check if the server is running and responsive
@@ -506,7 +506,51 @@ paths:
                     type: string
                     example: ok
 
-  /auth/register:
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: Prometheus-compatible metrics endpoint (no authentication required for scraping)
+      tags:
+        - Monitoring
+      security: []
+      responses:
+        '200':
+          description: Prometheus metrics in text format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /api/v1/metrics:
+    get:
+      summary: Internal metrics (authenticated)
+      description: Internal metrics endpoint requiring authentication
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Internal metrics
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /:
+    get:
+      summary: Web UI
+      description: Serve the embedded web UI (if available)
+      tags:
+        - Web UI
+      security: []
+      responses:
+        '200':
+          description: HTML web interface
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /api/v1/auth/register:
     post:
       summary: Register new user
       description: |
@@ -541,7 +585,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /auth/login:
+  /api/v1/auth/login:
     post:
       summary: Login user
       description: |
@@ -571,7 +615,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /auth/logout:
+  /api/v1/auth/refresh:
+    post:
+      summary: Refresh session token
+      description: Refresh an expired or soon-to-expire session token using a refresh token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+              required:
+                - refresh_token
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/logout:
     post:
       summary: Logout user
       description: Invalidate the current session token
@@ -589,7 +664,7 @@ paths:
                     type: string
                     example: logged out
 
-  /auth/me:
+  /api/v1/auth/me:
     get:
       summary: Get current user
       description: Returns information about the currently authenticated user
@@ -609,7 +684,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /users:
+  /api/v1/users:
     get:
       summary: List all users
       description: List all users in the system (admin only)
@@ -631,7 +706,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /users/{user_id}:
+  /api/v1/users/{user_id}:
     get:
       summary: Get user by ID
       description: Get a specific user's information
@@ -657,7 +732,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /users/{username}/enable:
+  /api/v1/users/{username}/enable:
     post:
       summary: Enable user
       description: Enable a user, allowing them to login and use the system (admin only)
@@ -689,7 +764,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /users/{username}/disable:
+  /api/v1/users/{username}/disable:
     post:
       summary: Disable user
       description: Disable a user, preventing login and all API access. Server will return 401 for disabled users. (admin only)
@@ -721,7 +796,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /users/{user_id}/reset-password:
+  /api/v1/users/{user_id}/reset-password:
     post:
       summary: Reset user password
       description: Reset a user's password (admin only)
@@ -763,7 +838,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /projects:
+  /api/v1/projects:
     get:
       summary: List projects
       description: List all projects the authenticated user can access
@@ -826,7 +901,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /projects/{project_id}:
+  /api/v1/projects/{project_id}:
     get:
       summary: Get project
       description: Get a specific project by ID
@@ -934,7 +1009,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /roles:
+  /api/v1/roles:
     get:
       summary: List roles
       description: List all roles accessible to the authenticated user
@@ -1012,7 +1087,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /roles/{role_id}:
+  /api/v1/roles/{role_id}:
     get:
       summary: Get role
       description: Get a specific role by ID
@@ -1116,7 +1191,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /roles/{role_id}/history:
+  /api/v1/roles/{role_id}/history:
     get:
       summary: Get role history
       description: Get task history for a specific role - shows all tasks worked on using this role
@@ -1144,7 +1219,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /tasks:
+  /api/v1/tasks:
     get:
       summary: List tasks
       description: |
@@ -1244,7 +1319,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /tasks/request:
+  /api/v1/tasks/request:
     post:
       summary: Request task (worker only)
       description: |
@@ -1268,7 +1343,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /tasks/{task_id}:
+  /api/v1/tasks/{task_id}:
     get:
       summary: Get task
       description: Get a specific task by ID, including full details but not history
@@ -1375,7 +1450,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /tasks/{task_id}/assign:
+  /api/v1/tasks/{task_id}/assign:
     post:
       summary: Assign task (admin/orchestrator only)
       description: |
@@ -1424,7 +1499,87 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /tasks/{task_id}/unassign:
+  /api/v1/tasks/{task_id}/claim:
+    post:
+      summary: Claim task (worker only)
+      description: |
+        Worker claims an available task. Task status becomes 'active', worker_id is set.
+        Used by workers to take ownership of tasks assigned to them.
+      tags:
+        - Tasks
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task claimed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Task not available for claiming
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - worker access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/tasks/{task_id}/free:
+    post:
+      summary: Free task (worker only)
+      description: |
+        Worker releases a task back to the pool. Task status becomes 'idle', worker_id is cleared.
+        Used by workers when they cannot complete a task.
+      tags:
+        - Tasks
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task freed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - worker access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/tasks/{task_id}/unassign:
     post:
       summary: Unassign task (admin/orchestrator only)
       description: |
@@ -1463,7 +1618,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /tasks/{task_id}/return:
+  /api/v1/tasks/{task_id}/return:
     post:
       summary: Return task (worker only)
       description: |
@@ -1495,7 +1650,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /tasks/{task_id}/complete:
+  /api/v1/tasks/{task_id}/complete:
     post:
       summary: Complete task
       description: Mark a task as complete (sets is_complete=true, completed_at timestamp, status=idle, worker_id=null)
@@ -1521,7 +1676,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /tasks/{task_id}/history:
+  /api/v1/tasks/{task_id}/history:
     get:
       summary: Get task history
       description: Get all history entries for a task, showing state changes and worker assignments
@@ -1549,7 +1704,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /tasks/{task_id}/comments:
+  /api/v1/tasks/{task_id}/comments:
     get:
       summary: Get task comments
       description: Get all comments on a task
@@ -1602,7 +1757,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Task'
 
-  /tasks/{task_id}/dependencies:
+  /api/v1/tasks/{task_id}/dependencies:
     get:
       summary: Get task dependencies
       description: Get all tasks that this task depends on and all tasks that depend on this task
@@ -1633,7 +1788,7 @@ paths:
                       $ref: '#/components/schemas/Task'
                     description: Tasks that depend on this task
 
-  /workers:
+  /api/v1/workers:
     get:
       summary: List workers
       description: List all workers (users of type 'worker')
@@ -1649,7 +1804,89 @@ paths:
                 items:
                   $ref: '#/components/schemas/User'
 
-  /workers/{worker_id}:
+  /api/v1/workers/register:
+    post:
+      summary: Register worker
+      description: Register a new worker (worker only)
+      tags:
+        - Workers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                worker_id:
+                  type: string
+                  description: Unique worker identifier
+              required:
+                - worker_id
+      responses:
+        '200':
+          description: Worker registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  worker_id:
+                    type: string
+        '400':
+          description: Bad request (missing worker_id or worker already registered)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Worker already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/workers/request:
+    post:
+      summary: Request task assignment
+      description: Request the next available task for a worker (worker only)
+      tags:
+        - Workers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                worker_id:
+                  type: string
+                  description: Worker identifier
+              required:
+                - worker_id
+      responses:
+        '200':
+          description: Task assigned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+                  message:
+                    type: string
+        '204':
+          description: No tasks available
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/workers/{worker_id}:
     get:
       summary: Get worker
       description: Get a specific worker by ID
@@ -1712,7 +1949,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /workers/{worker_id}/tasks:
+  /api/v1/workers/{worker_id}/tasks:
     get:
       summary: Get worker tasks
       description: Get all tasks assigned to a worker
@@ -1734,7 +1971,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Task'
 
-  /workers/{worker_id}/history:
+  /api/v1/workers/{worker_id}/history:
     get:
       summary: Get worker history
       description: Get task history for a worker - shows all work sessions
@@ -1756,7 +1993,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/TaskHistory'
 
-  /workers/{worker_id}/stats:
+  /api/v1/workers/{worker_id}/stats:
     get:
       summary: Get worker statistics
       description: Get statistics for a worker (total tasks, completion rate, etc)
@@ -1776,7 +2013,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkerStats'
 
-  /workers/heartbeat:
+  /api/v1/workers/heartbeat:
     post:
       summary: Worker heartbeat
       description: |
@@ -1812,7 +2049,7 @@ paths:
                     type: string
                     example: heartbeat received
 
-  /orchestrator/heartbeat:
+  /api/v1/orchestrator/heartbeat:
     post:
       summary: Orchestrator heartbeat
       description: |
@@ -1844,7 +2081,7 @@ paths:
                     type: string
                     example: heartbeat received
 
-  /heartbeats:
+  /api/v1/heartbeats:
     get:
       summary: List heartbeats
       description: List all worker and orchestrator heartbeats for monitoring
@@ -1860,7 +2097,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Heartbeat'
 
-  /config:
+  /api/v1/config:
     get:
       summary: List all configuration
       description: Get all configuration key-value pairs (admin only)
@@ -1882,7 +2119,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /config/{key}:
+  /api/v1/config/{key}:
     get:
       summary: Get configuration value
       description: Get a specific configuration value by key (admin only)
@@ -1974,7 +2211,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /auth/passkey/register/begin:
+  /api/v1/auth/passkey/register/begin:
     post:
       summary: Begin passkey registration
       description: Start WebAuthn passkey registration process
@@ -1989,7 +2226,7 @@ paths:
                 type: object
                 description: WebAuthn credential creation options
 
-  /auth/passkey/register/finish:
+  /api/v1/auth/passkey/register/finish:
     post:
       summary: Finish passkey registration
       description: Complete WebAuthn passkey registration
@@ -2013,7 +2250,7 @@ paths:
                   message:
                     type: string
 
-  /auth/passkey/authenticate/begin:
+  /api/v1/auth/passkey/authenticate/begin:
     post:
       summary: Begin passkey authentication
       description: Start WebAuthn passkey authentication process
@@ -2040,7 +2277,7 @@ paths:
                 type: object
                 description: WebAuthn credential request options
 
-  /auth/passkey/authenticate/finish:
+  /api/v1/auth/passkey/authenticate/finish:
     post:
       summary: Finish passkey authentication
       description: Complete WebAuthn passkey authentication and create session
@@ -2062,7 +2299,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
 
-  /auth/passkey/list:
+  /api/v1/auth/passkey/list:
     get:
       summary: List user passkeys
       description: List all registered passkeys for the authenticated user
@@ -2091,7 +2328,7 @@ paths:
                       format: date-time
                       nullable: true
 
-  /auth/passkey:
+  /api/v1/auth/passkey:
     delete:
       summary: Delete passkey
       description: Delete a registered passkey

@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:8080',
+    baseURL: process.env.BASE_URL || 'http://localhost:10606',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -29,8 +29,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: '../../task server -f ../../task.test.db -port 8080',
-    url: 'http://localhost:8080',
+    command: '../../task server -f ../../task.test.db -port 10606',
+    url: 'http://localhost:10606',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },
