@@ -37,8 +37,8 @@ func main() {
 	case "orchestrator":
 		runOrchestrator(os.Args[2:])
 	case "worker":
-		// Check if it's worker daemon mode (no subcommand or -f flag) or worker CLI commands
-		if len(os.Args) < 3 || os.Args[2] == "-f" || os.Args[2] == "-project_id" {
+		// Check if it's worker daemon mode (no subcommand or has daemon flags) or worker CLI commands
+		if len(os.Args) < 3 || os.Args[2] == "-worker_id" || os.Args[2] == "-url" || os.Args[2] == "-password" {
 			// Worker daemon mode
 			runWorker(os.Args[2:])
 		} else {
@@ -155,16 +155,16 @@ func runOrchestrator(args []string) {
 func runWorker(args []string) {
 	fs := flag.NewFlagSet("worker", flag.ExitOnError)
 	serverURL := fs.String("url", "http://localhost:8080", "Server URL")
-	username := fs.String("username", os.Getenv("SF_USERNAME"), "Username")
+	workerID := fs.String("worker_id", os.Getenv("SF_USERNAME"), "Worker ID")
 	password := fs.String("password", os.Getenv("SF_PASSWORD"), "Password")
 	fs.Parse(args)
 
-	if *username == "" || *password == "" {
-		fmt.Fprintln(os.Stderr, "Error: SF_USERNAME and SF_PASSWORD required")
+	if *workerID == "" || *password == "" {
+		fmt.Fprintln(os.Stderr, "Error: SF_USERNAME and SF_PASSWORD required (or use -worker_id and -password flags)")
 		os.Exit(1)
 	}
 
-	w := worker.New(*serverURL, *username, *password)
+	w := worker.New(*serverURL, *workerID, *password)
 	if err := w.Start(); err != nil {
 		log.Fatalf("Failed to start worker: %v", err)
 	}

@@ -12,7 +12,7 @@ import (
 
 type Worker struct {
 	serverURL   string
-	username    string
+	workerID    string
 	password    string
 	client      *http.Client
 	stopCh      chan struct{}
@@ -31,10 +31,10 @@ type WorkResponse struct {
 	Role interface{} `json:"role,omitempty"`
 }
 
-func New(serverURL, username, password string) *Worker {
+func New(serverURL, workerID, password string) *Worker {
 	return &Worker{
 		serverURL: serverURL,
-		username:  username,
+		workerID:  workerID,
 		password:  password,
 		client:    &http.Client{},
 		stopCh:    make(chan struct{}),
@@ -47,7 +47,15 @@ func New(serverURL, username, password string) *Worker {
 }
 
 func (w *Worker) Start() error {
-	log.Printf("Starting worker %s, connecting to %s", w.username, w.serverURL)
+	log.Printf("Starting worker %s, connecting to %s", w.workerID, w.serverURL)
+
+	// First, register with the server
+	if err := w.register(); err != nil {
+		log.Printf("Registration failed: %v", err)
+		return fmt.Errorf("worker registration rejected: %w", err)
+	}
+	log.Printf("Worker %s registered successfully", w.workerID)
+
 	if err := w.loadConfig(); err != nil {
 		log.Printf("Warning: failed to load config: %v", err)
 	}
@@ -184,6 +192,28 @@ func (w *Worker) processTask(task map[string]interface{}, role interface{}) erro
 	return err
 }
 
+func (w *Worker) register() error {
+	body := map[string]string{
+		"worker_id": w.workerID,
+	}
+	data, err := w.request("POST", "/api/v1/workers/register", body)
+	if err != nil {
+		return err
+	}
+
+	// Parse registration response
+	var response map[string]interface{}
+	if err := json.Unmarshal(data, &response); err != nil {
+		return fmt.Errorf("invalid registration response: %w", err)
+	}
+
+	if status, ok := response["status"].(string); ok && status == "registered" {
+		return nil
+	}
+
+	return fmt.Errorf("registration failed: %s", response["message"])
+}
+
 func (w *Worker) request(method, path string, body interface{}) ([]byte, error) {
 	url := w.serverURL + path
 	var bodyReader io.Reader
@@ -198,7 +228,7 @@ func (w *Worker) request(method, path string, body interface{}) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(w.username, w.password)
+	req.SetBasicAuth(w.workerID, w.password)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

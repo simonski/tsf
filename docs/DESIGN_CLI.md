@@ -118,7 +118,7 @@ All `sf config` commands are usable only by an admin and will return forbidden t
 sf config set -key KEY -value VALUE
 
 # delete a configuration value
-sf config rm -key KEY
+sf config rm|delete -key KEY
 
 # get all configuration
 sf config list|ls
@@ -137,8 +137,8 @@ sf config list|ls -json
 
 sf project create -project_id XXX -name XXX -description XXX
 sf project list -project_id XXX -name XXX -description XXX 
-sf project udpate -project_id XXX -name XXX -description XXX
-sf project delete -project_id XXX -name XXX -description XXX
+sf project update -project_id XXX -name XXX -description XXX
+sf project rm|delete -project_id XXX -name XXX -description XXX
 
 # this avoids the need for -project XXX
 # this sets a local (via the ~/.config/ts/config.json) setting to remember the current project

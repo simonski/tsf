@@ -7,6 +7,18 @@ import (
 	"github.com/simonski/task/internal/db"
 )
 
+// WorkerRegisterRequest represents a worker registration request
+type WorkerRegisterRequest struct {
+	WorkerID string `json:"worker_id"`
+}
+
+// WorkerRegisterResponse represents a worker registration response
+type WorkerRegisterResponse struct {
+	Status  string                 `json:"status"`
+	Message string                 `json:"message,omitempty"`
+	Config  map[string]interface{} `json:"config,omitempty"`
+}
+
 // WorkerRequestResponse represents a worker request response
 type WorkerRequestResponse struct {
 	Task interface{} `json:"task,omitempty"`
@@ -17,6 +29,90 @@ type WorkerRequestResponse struct {
 type HeartbeatRequest struct {
 	Status string  `json:"status"`
 	TaskID *string `json:"task_id,omitempty"`
+}
+
+// handleWorkerRegister handles worker registration
+func (s *Server) handleWorkerRegister(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		sendError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	// Verify this is a worker user type
+	if user.Type != "worker" {
+		response := WorkerRegisterResponse{
+			Status:  "rejected",
+			Message: "only worker type users can register as workers",
+		}
+		sendJSON(w, http.StatusForbidden, response)
+		return
+	}
+
+	// Check if user is active
+	if !user.IsActive {
+		response := WorkerRegisterResponse{
+			Status:  "rejected",
+			Message: "worker account is disabled",
+		}
+		sendJSON(w, http.StatusForbidden, response)
+		return
+	}
+
+	// Check if this worker is already active (another instance running)
+	var existingStatus string
+	var lastSeen string
+	err := s.db.Conn().QueryRow(`
+		SELECT status, last_seen FROM heartbeats WHERE user_id = ?
+	`, user.ID).Scan(&existingStatus, &lastSeen)
+
+	if err == nil && existingStatus == "active" {
+		// Check if the last heartbeat was recent (within idle timeout)
+		// If it's recent, reject this worker as a duplicate
+		var idleTimeout int
+		configErr := s.db.Conn().QueryRow(`
+			SELECT value FROM config WHERE key = 'worker.idle'
+		`).Scan(&idleTimeout)
+
+		if configErr == nil {
+			// Parse last_seen and check if it's within the idle timeout
+			// For simplicity, if there's an active heartbeat, reject
+			response := WorkerRegisterResponse{
+				Status:  "rejected",
+				Message: "worker with this ID is already active",
+			}
+			sendJSON(w, http.StatusConflict, response)
+			return
+		}
+	}
+
+	// Registration successful - return config
+	response := WorkerRegisterResponse{
+		Status:  "registered",
+		Message: "worker registered successfully",
+		Config: map[string]interface{}{
+			"worker.heartbeat": "1000",
+			"worker.idle":      "10000",
+			"worker.poll":      "5000",
+		},
+	}
+
+	// Load actual config values from database
+	rows, err := s.db.Conn().Query(`
+		SELECT key, value FROM config 
+		WHERE key IN ('worker.heartbeat', 'worker.idle', 'worker.poll')
+	`)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var key, value string
+			if err := rows.Scan(&key, &value); err == nil {
+				response.Config[key] = value
+			}
+		}
+	}
+
+	sendJSON(w, http.StatusOK, response)
 }
 
 // handleWorkerRequest handles worker work requests
