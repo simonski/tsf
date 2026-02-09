@@ -362,13 +362,23 @@ async function register(username, password) {
 }
 
 function logout() {
+    // Clear state
     state.credentials = null;
     state.currentUser = null;
     state.currentProject = null;
     state.projects = [];
     state.tasks = [];
-    localStorage.removeItem('credentials');
-    localStorage.removeItem('lastScreen');
+
+    // Clear localStorage
+    try {
+        localStorage.removeItem('credentials');
+        localStorage.removeItem('lastScreen');
+        localStorage.removeItem('authToken');
+    } catch (e) {
+        console.error('Error clearing localStorage:', e);
+    }
+
+    // Show login screen
     showScreen('auth-screen');
 }
 

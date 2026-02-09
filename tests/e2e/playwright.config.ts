@@ -29,7 +29,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: '../../task server -f ../../task.test.db -port 10606',
+    command: '../../sf server -f ../../sf.test.db -port 10606',
     url: 'http://localhost:10606',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

@@ -35,7 +35,7 @@ test.describe('Authentication', () => {
     await expect(page.locator('#auth-screen')).not.toBeVisible();
     
     // Verify board is displayed
-    await expect(page.locator('#board-screen .app-header h1')).toContainText('Task Management');
+    await expect(page.locator('#board-screen .app-header h1')).toContainText('Kanban Board');
   });
 
   test('should show error on invalid credentials', async ({ page }) => {

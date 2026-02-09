@@ -6,8 +6,8 @@ services:
     volumes:
       - ./data:/data
     environment:
-      - SF_DB_PATH=/data/task.db
-    command: /app/task initdb -f /data/task.db
+      - SF_DB_PATH=/data/sf.db
+    command: /app/sf initdb -f /data/sf.db
     restart: "no"
 
   server:
@@ -17,8 +17,8 @@ services:
     volumes:
       - ./data:/data
     environment:
-      - SF_DB_PATH=/data/task.db
-    command: /app/task server -f /data/task.db -port 8080
+      - SF_DB_PATH=/data/sf.db
+    command: /app/sf server -f /data/sf.db -port 8080
     depends_on:
       - initdb
     restart: unless-stopped
@@ -29,7 +29,7 @@ services:
       - SF_URL=http://server:8080
       - SF_USERNAME=orchestrator
       - SF_PASSWORD=${ORCHESTRATOR_PASSWORD}
-    command: /app/task orchestrator -url http://server:8080
+    command: /app/sf orchestrator -url http://server:8080
     depends_on:
       - server
     restart: unless-stopped

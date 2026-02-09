@@ -1,4 +1,4 @@
-.PHONY: help build clean test test-go test-go-unit test-go-coverage test-e2e test-e2e-setup task docker docker-up docker-down run-local
+.PHONY: help build clean test test-go test-go-unit test-go-coverage test-e2e test-e2e-setup docker docker-up docker-down run-local
 
 help:
 	@echo "sf - Software Factory - Makefile"
