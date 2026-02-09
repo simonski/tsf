@@ -31,9 +31,17 @@ func (c *Client) Request(method, path string, body interface{}) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-	if c.config.Username != "" && c.config.Password != "" {
+
+	// Try session token first, then fall back to Basic Auth
+	sessionToken, err := LoadSessionToken()
+	if err == nil && sessionToken != nil && sessionToken.Token != "" {
+		// Use JWT bearer token
+		req.Header.Set("Authorization", "Bearer "+sessionToken.Token)
+	} else if c.config.Username != "" && c.config.Password != "" {
+		// Fall back to Basic Auth
 		req.SetBasicAuth(c.config.Username, c.config.Password)
 	}
+
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

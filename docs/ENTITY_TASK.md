@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Represents a unit of work that progresses through a lifecycle until completely finished. Tasks form a hierarchy (epic > story > task > sub-task) and track dependencies, ownership, and work history.
+Represents a unit of work that progresses through a lifecycle until completely finished. Tasks form a hierarchy (epic > story > task > etc) and track dependencies, ownership, and work history.
 
 The lifecycle of a task is that it will be worked on in some form until it is completely finished. It will be "passed" between WORKERs as it progresses, where each time it is passed it will have a new entry in its history. Eventually all the WORKERs will complete their jobs and the task will be deemed complete and finished.
 
@@ -11,13 +11,12 @@ The lifecycle of a task is that it will be worked on in some form until it is co
 - `id`: uuid (primary key) - Unique identifier for the task
 - `project_id`: uuid (required, fk to projects.id) - The project this task belongs to
 - `title`: string (required, max 200 chars) - Single-sentence summary of the task
-- `type`: enum (epic, story, task, sub-task, bug, spike) - Classification of work
+- `type`: enum (epic|task|bug|spike|chore) - Classification of work
   - `epic`: Large body of work spanning multiple stories
-  - `story`: User-facing feature or requirement
   - `task`: Technical work item
-  - `sub-task`: Breakdown of a task
   - `bug`: Defect to be fixed
   - `spike`: Research or investigation
+  - `chore`: Documentationa/non functional change
 - `description`: text (required) - Multi-paragraph detailed description
 - `acceptance_criteria`: text (nullable) - Multi-paragraph definition of done
 - `parent_id`: uuid (nullable, fk to tasks.id) - Parent task in hierarchy
@@ -37,6 +36,8 @@ The lifecycle of a task is that it will be worked on in some form until it is co
 - `labels`: text[] (nullable) - Array of tags for categorization and fast lookup
 - `estimated_effort`: integer (nullable) - Estimated story points or hours
 - `actual_effort`: integer (nullable) - Actual time spent (sum of all work sessions)
+- `comments`: jsonb (nullable) - Array of comment objects with {text, user_id, username, created_at}
+- `is_deleted`: boolean (default false) - Soft delete flag, true when task is deleted
 
 ## Relationships
 

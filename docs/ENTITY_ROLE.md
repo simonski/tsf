@@ -20,7 +20,7 @@ Defines a "job description" or persona that shapes how workers approach and exec
 - `id`: uuid (primary key) - Unique identifier for the role
 - `name`: string (required, unique, max 100 chars) - Short name (e.g., "programmer", "tester")
 - `description`: text (required) - Multi-paragraph job description explaining the role's purpose and responsibilities
-- `rules`: text (required) - Instructions and context for LLM workers operating in this role. This becomes the system prompt that motivates behavior.
+- `goals`: text (required) - Instructions and context for LLM workers operating in this role. This becomes the system prompt that motivates behavior.
 - `scope`: enum (system, global, project) - Visibility and applicability of the role
   - `system`: Built-in role, cannot be modified or deleted by users
   - `global`: User-defined role available across all projects
@@ -54,7 +54,7 @@ Defines a "job description" or persona that shapes how workers approach and exec
 - `project_id` must be null if scope is system or global
 - `project_id` must be set if scope is project
 - System roles cannot be deleted or have scope changed
-- `rules` cannot be empty
+- `goals` cannot be empty
 
 ## Validation Rules
 
@@ -68,7 +68,7 @@ Defines a "job description" or persona that shapes how workers approach and exec
 
 The ORCHESTRATOR assigns both WORK (task) and ROLE to workers. This allows workers to be dynamically repurposed:
 - Same worker can function as Programmer on one task, Tester on another
-- The `rules` field provides LLM context that motivates appropriate behavior
+- The `goals` field provides LLM context that motivates appropriate behavior
 - Role assignment is recorded in task history for auditability
 
 ## Default System Roles

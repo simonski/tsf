@@ -27,9 +27,11 @@ Note: `sf initdb` is the ONLY command which touches the database directly as it 
 Initialisation will:
 - Create the database directory if it doesn't exist
 - Initialize schema with all required tables
-- Create an admin user with a generated password (printed to stdout)
-- Set up system configuration
-- Create the ORCHESTRATOR username/password in the USERS table.
+- Create an ADMIN user with a generated password (printed to stdout)
+- Create a normal USER with a generated password (printed to stdout)
+- Create 1 WORKER with a generated password (printed to stdout)
+- Create a default project
+- Set up system configuration values
 
 Initialisation creates default config values in the config table:
 

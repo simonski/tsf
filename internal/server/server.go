@@ -116,10 +116,27 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("POST /api/v1/tasks/{task_id}/complete", s.withAuth(s.handleCompleteTask))
 	mux.HandleFunc("GET /api/v1/tasks/{task_id}/history", s.withAuth(s.handleGetTaskHistory))
 	mux.HandleFunc("GET /api/v1/tasks/{task_id}/dependencies", s.withAuth(s.handleGetTaskDependencies))
+	mux.HandleFunc("POST /api/v1/tasks/{task_id}/unassign", s.withAuth(s.handleUnassignTask))
+	mux.HandleFunc("GET /api/v1/tasks/{task_id}/comments", s.withAuth(s.handleGetTaskComments))
+	mux.HandleFunc("POST /api/v1/tasks/{task_id}/comments", s.withAuth(s.handleAddTaskComment))
+	mux.HandleFunc("POST /api/v1/tasks/request", s.withAuth(s.handleTaskRequest))
+	mux.HandleFunc("POST /api/v1/tasks/{task_id}/return", s.withAuth(s.handleTaskReturn))
 
-	// Worker endpoints
+	// Worker management endpoints
+	mux.HandleFunc("GET /api/v1/workers", s.withAuth(s.handleListWorkers))
+	mux.HandleFunc("GET /api/v1/workers/{worker_id}", s.withAuth(s.handleGetWorker))
+	mux.HandleFunc("PUT /api/v1/workers/{worker_id}", s.withAuth(s.handleUpdateWorker))
+	mux.HandleFunc("GET /api/v1/workers/{worker_id}/tasks", s.withAuth(s.handleGetWorkerTasks))
+	mux.HandleFunc("GET /api/v1/workers/{worker_id}/history", s.withAuth(s.handleGetWorkerHistory))
+	mux.HandleFunc("GET /api/v1/workers/{worker_id}/stats", s.withAuth(s.handleGetWorkerStats))
 	mux.HandleFunc("POST /api/v1/workers/request", s.withAuth(s.handleWorkerRequest))
 	mux.HandleFunc("POST /api/v1/workers/heartbeat", s.withAuth(s.handleWorkerHeartbeat))
+
+	// Role history endpoint
+	mux.HandleFunc("GET /api/v1/roles/{role_id}/history", s.withAuth(s.handleGetRoleHistory))
+
+	// User password reset endpoint
+	mux.HandleFunc("POST /api/v1/users/{user_id}/reset-password", s.withAuth(s.withAdmin(s.handleResetUserPassword)))
 
 	// Orchestrator endpoints
 	mux.HandleFunc("POST /api/v1/orchestrator/heartbeat", s.withAuth(s.handleOrchestratorHeartbeat))

@@ -172,6 +172,11 @@ function showScreen(screenId) {
         screen.classList.add('hidden');
     });
     document.getElementById(screenId).classList.remove('hidden');
+    
+    // Save current screen to localStorage (except auth screen)
+    if (screenId !== 'auth-screen') {
+        localStorage.setItem('lastScreen', screenId);
+    }
 }
 
 function showError(elementId, message) {
@@ -203,7 +208,20 @@ async function login(username, password) {
         }
         
         await loadProjects();
-        showScreen('board-screen');
+        
+        // Restore last viewed screen or default to board-screen
+        const lastScreen = localStorage.getItem('lastScreen');
+        if (lastScreen && document.getElementById(lastScreen)) {
+            showScreen(lastScreen);
+            
+            // If it was overview screen, reinitialize visualization
+            if (lastScreen === 'overview-screen') {
+                await initOverviewVisualization();
+            }
+        } else {
+            showScreen('board-screen');
+        }
+        
         hideError('auth-error');
     } catch (error) {
         state.credentials = null;
@@ -234,6 +252,7 @@ function logout() {
     state.projects = [];
     state.tasks = [];
     localStorage.removeItem('credentials');
+    localStorage.removeItem('lastScreen');
     showScreen('auth-screen');
 }
 

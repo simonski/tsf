@@ -30,7 +30,7 @@ type Role struct {
 	ID          string     `json:"id"`
 	Name        string     `json:"name"`
 	Description string     `json:"description"`
-	Rules       string     `json:"rules"`
+	Goals       string     `json:"rules"`
 	Scope       string     `json:"scope"`
 	ProjectID   *string    `json:"project_id,omitempty"`
 	IsActive    bool       `json:"is_active"`

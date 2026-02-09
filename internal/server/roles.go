@@ -12,7 +12,7 @@ import (
 type RoleRequest struct {
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
-	Rules       string  `json:"rules"`
+	Goals       string  `json:"goals"`
 	Scope       string  `json:"scope"`
 	ProjectID   *string `json:"project_id,omitempty"`
 	IsActive    *bool   `json:"is_active,omitempty"`
@@ -21,7 +21,7 @@ type RoleRequest struct {
 // handleListRoles returns all accessible roles
 func (s *Server) handleListRoles(w http.ResponseWriter, r *http.Request) {
 	query := `
-		SELECT id, name, description, rules, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
+		SELECT id, name, description, goals, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
 		FROM roles
 		WHERE 1=1
 	`
@@ -54,7 +54,7 @@ func (s *Server) handleListRoles(w http.ResponseWriter, r *http.Request) {
 			&role.ID,
 			&role.Name,
 			&role.Description,
-			&role.Rules,
+			&role.Goals,
 			&role.Scope,
 			&projectID,
 			&role.IsActive,
@@ -78,6 +78,86 @@ func (s *Server) handleListRoles(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, http.StatusOK, roles)
 }
 
+// handleGetRoleHistory returns task history for a specific role
+func (s *Server) handleGetRoleHistory(w http.ResponseWriter, r *http.Request) {
+	roleID := r.PathValue("role_id")
+
+	// Verify role exists
+	var exists int
+	err := s.db.Conn().QueryRow(`SELECT 1 FROM roles WHERE id = ?`, roleID).Scan(&exists)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusNotFound, "role not found")
+		return
+	}
+
+	query := `
+		SELECT h.id, h.task_id, h.started_at, h.completed_at, h.state,
+		       h.worker_id, h.result, h.summary,
+		       t.title as task_title,
+		       u.username as worker_name
+		FROM task_history h
+		LEFT JOIN tasks t ON h.task_id = t.id
+		LEFT JOIN users u ON h.worker_id = u.id
+		WHERE h.role_id = ?
+		ORDER BY h.started_at DESC
+	`
+
+	rows, err := s.db.Conn().Query(query, roleID)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to query history")
+		return
+	}
+	defer rows.Close()
+
+	type HistoryEntry struct {
+		ID          string  `json:"id"`
+		TaskID      string  `json:"task_id"`
+		TaskTitle   string  `json:"task_title,omitempty"`
+		StartedAt   string  `json:"started_at"`
+		CompletedAt *string `json:"completed_at,omitempty"`
+		State       string  `json:"state"`
+		WorkerID    string  `json:"worker_id"`
+		WorkerName  string  `json:"worker_name,omitempty"`
+		Result      *string `json:"result,omitempty"`
+		Summary     *string `json:"summary,omitempty"`
+	}
+
+	history := []HistoryEntry{}
+	for rows.Next() {
+		var entry HistoryEntry
+		var completedAt, result, summary, taskTitle, workerName sql.NullString
+
+		err := rows.Scan(
+			&entry.ID, &entry.TaskID, &entry.StartedAt, &completedAt, &entry.State,
+			&entry.WorkerID, &result, &summary, &taskTitle, &workerName,
+		)
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "failed to scan history")
+			return
+		}
+
+		if completedAt.Valid {
+			entry.CompletedAt = &completedAt.String
+		}
+		if result.Valid {
+			entry.Result = &result.String
+		}
+		if summary.Valid {
+			entry.Summary = &summary.String
+		}
+		if taskTitle.Valid {
+			entry.TaskTitle = taskTitle.String
+		}
+		if workerName.Valid {
+			entry.WorkerName = workerName.String
+		}
+
+		history = append(history, entry)
+	}
+
+	sendJSON(w, http.StatusOK, history)
+}
+
 // handleCreateRole creates a new role
 func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r.Context())
@@ -92,8 +172,8 @@ func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.Description == "" || req.Rules == "" || req.Scope == "" {
-		sendError(w, http.StatusBadRequest, "name, description, rules, and scope are required")
+	if req.Name == "" || req.Description == "" || req.Goals == "" || req.Scope == "" {
+		sendError(w, http.StatusBadRequest, "name, description, goals, and scope are required")
 		return
 	}
 
@@ -109,9 +189,9 @@ func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 
 	roleID := uuid.New().String()
 	_, err := s.db.Conn().Exec(`
-		INSERT INTO roles (id, name, description, rules, scope, project_id, is_active, created_by, updated_by)
+		INSERT INTO roles (id, name, description, goals, scope, project_id, is_active, created_by, updated_by)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, roleID, req.Name, req.Description, req.Rules, req.Scope, req.ProjectID, true, user.ID, user.ID)
+	`, roleID, req.Name, req.Description, req.Goals, req.Scope, req.ProjectID, true, user.ID, user.ID)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to create role")
 		return
@@ -121,14 +201,14 @@ func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 	var projectID sql.NullString
 	var createdAt, updatedAt string
 	err = s.db.Conn().QueryRow(`
-		SELECT id, name, description, rules, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
+		SELECT id, name, description, goals, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
 		FROM roles
 		WHERE id = ?
 	`, roleID).Scan(
 		&role.ID,
 		&role.Name,
 		&role.Description,
-		&role.Rules,
+		&role.Goals,
 		&role.Scope,
 		&projectID,
 		&role.IsActive,
@@ -158,14 +238,14 @@ func (s *Server) handleGetRole(w http.ResponseWriter, r *http.Request) {
 	var projectID sql.NullString
 	var createdAt, updatedAt string
 	err := s.db.Conn().QueryRow(`
-		SELECT id, name, description, rules, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
+		SELECT id, name, description, goals, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
 		FROM roles
 		WHERE id = ?
 	`, roleID).Scan(
 		&role.ID,
 		&role.Name,
 		&role.Description,
-		&role.Rules,
+		&role.Goals,
 		&role.Scope,
 		&projectID,
 		&role.IsActive,
@@ -227,11 +307,11 @@ func (s *Server) handleUpdateRole(w http.ResponseWriter, r *http.Request) {
 		UPDATE roles
 		SET name = COALESCE(?, name),
 		    description = COALESCE(?, description),
-		    rules = COALESCE(?, rules),
+		    goals = COALESCE(?, goals),
 		    is_active = COALESCE(?, is_active),
 		    updated_by = ?
 		WHERE id = ?
-	`, req.Name, req.Description, req.Rules, req.IsActive, user.ID, roleID)
+	`, req.Name, req.Description, req.Goals, req.IsActive, user.ID, roleID)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to update role")
 		return
@@ -241,14 +321,14 @@ func (s *Server) handleUpdateRole(w http.ResponseWriter, r *http.Request) {
 	var projectID sql.NullString
 	var createdAt, updatedAt string
 	err = s.db.Conn().QueryRow(`
-		SELECT id, name, description, rules, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
+		SELECT id, name, description, goals, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
 		FROM roles
 		WHERE id = ?
 	`, roleID).Scan(
 		&role.ID,
 		&role.Name,
 		&role.Description,
-		&role.Rules,
+		&role.Goals,
 		&role.Scope,
 		&projectID,
 		&role.IsActive,

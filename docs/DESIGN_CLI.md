@@ -44,7 +44,7 @@ Option `-json` in any command in CLI prints to STDOUT the response in pretty-pri
 Creates a session token valid for the `session.duration` configuration value (or permanently if `session.duration` is `0`).
 
 ```bash
-# login (stores session token in ~/.config/sf/config.json)
+# login (stores session token in ~/.config/sf/session.json)
 # will request username and password if not supplied and not available via env vars
 SF_USERNAME=xxx
 SF_PASSWORD=yyy
@@ -135,27 +135,27 @@ sf config list|ls -json
 # activate project NAME as default working project (stores in ~/.config/sf/config.json)
 # this avoids the need for -project XXX
 
-sf project create -project_id XXX -title XXX -description XXX -prefix ABC
-sf project list -project_id XXX -title XXX -description XXX -prefix ABC
-sf project udpate -project_id XXX -title XXX -description XXX -prefix ABC
-sf project delete -project_id XXX -title XXX -description XXX -prefix ABC
+sf project create -project_id XXX -name XXX -description XXX
+sf project list -project_id XXX -name XXX -description XXX 
+sf project udpate -project_id XXX -name XXX -description XXX
+sf project delete -project_id XXX -name XXX -description XXX
 
 # this avoids the need for -project XXX
 # this sets a local (via the ~/.config/ts/config.json) setting to remember the current project
-sf project set-default -project_id $NAME
+sf project set-default -project_id XXX
 
 # prints the current project, or 'default' if none set
 # (via the ~/.config/ts/config.json)current project
 sf project get-default 
 
 # deactivate project NAME as default working project (stores in ~/.config/sf/config.json) (revert to project "default")
-sf project unset-default -project_id $NAME
+sf project unset-default -project_id XXX
 
 # list all projects
 sf project list 
 
 # update feature(s) of a project
-sf project update -project_id XXXX (-title XXX -description YYYY -prefix ABC)
+sf project update -project_id XXXX (-name XXX -description YYYY)
 
 ```
 
@@ -164,17 +164,21 @@ sf project update -project_id XXXX (-title XXX -description YYYY -prefix ABC)
 `sf role` commands are available to ADMIN, USER, WORKER and ORCHESTRATOR
 
 ```bash
-# list all users
+# list all roles
 sf role list
 
 # create a role
+# title - text
+# description - text
+# goals - text
 sf role create -title XXX -description XXX -goals XXXX
+> returns role_id
 
 # create a role
-sf role update -user_id X -description desc -type human|worker
+sf role update -role_id XXX -title -description -goals
 
 # view role history
-sf role history -user_id X
+sf role history -role_id XXXX
 ```
 
 ### Tasks
@@ -183,9 +187,8 @@ sf role history -user_id X
 
 ```bash
 # create a task
-sf task create -title XXX -description YYY -acceptance_criteria ZZZ -type feature|bug|epic|chore
+sf task create -title XXX -description YYY -acceptance_criteria ZZZ -type epic|task|bug|spike|chore
 > returns task_id
-> task_id will be the project prefix then a uuid e.g PREFIX_UUID
 
 # returns the full task description including history
 sf task get -task_id A 
@@ -209,6 +212,10 @@ sf task update -task_id A -description "The description"
 # The comment will store the text, the caller name, the date/time
 sf task comment -task_id A -comment "The comment"
 
+# view task history
+# shows all history entries for a task including state changes and worker assignments
+sf task history -task_id A
+
 # delete a task
 # soft deletes a task (marks it as is_deleted true)
 sf task rm|delete -task_id N 
@@ -227,10 +234,12 @@ Only WORKER can make the following calls or they will fail.
 # returns the task currently assigned to this worker_id
 sf task request
 
-# returns a task to the ORCHESTRATOR 
-# the task will be marked as IDLE and the current_worker will be NULL
-# the task history will show the task has been "freed"
-sf task return (-task_id Y)
+# returns a task
+# the task will be marked as IDLE 
+# the the current_task and current_role on this worker will be marked as null
+# the current worker and current_role on the task will be marked as null
+# the task history will be updated
+sf task return
 ```
 
 ### Orchestrator/Admin only Task Calls

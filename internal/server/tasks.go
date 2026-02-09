@@ -27,7 +27,8 @@ type TaskRequest struct {
 
 // AssignTaskRequest represents a task assignment request
 type AssignTaskRequest struct {
-	UserID string `json:"user_id"`
+	UserID string  `json:"user_id"`
+	RoleID *string `json:"role_id,omitempty"`
 }
 
 // handleListTasks returns tasks with optional filters
@@ -209,6 +210,18 @@ func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	// Support blocked_by as alias for depends_on_task_id
+	if v, ok := rawBody["blocked_by"]; ok {
+		if string(v) == "null" {
+			updates = append(updates, "depends_on_task_id = NULL")
+		} else {
+			var val string
+			if json.Unmarshal(v, &val) == nil && val != "" {
+				updates = append(updates, "depends_on_task_id = ?")
+				args = append(args, val)
+			}
+		}
+	}
 	if v, ok := rawBody["priority"]; ok {
 		var val string
 		if json.Unmarshal(v, &val) == nil && val != "" {
@@ -273,11 +286,19 @@ func joinWithComma(parts []string) string {
 	return result
 }
 
-// handleDeleteTask deletes a task
+// handleDeleteTask soft deletes a task by setting is_deleted flag
 func (s *Server) handleDeleteTask(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		sendError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
 	taskID := r.PathValue("task_id")
 
-	result, err := s.db.Conn().Exec("DELETE FROM tasks WHERE id = ?", taskID)
+	result, err := s.db.Conn().Exec(`
+		UPDATE tasks SET is_deleted = 1, updated_by = ?, updated_at = ? WHERE id = ?
+	`, user.ID, time.Now(), taskID)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to delete task")
 		return
@@ -398,6 +419,15 @@ func (s *Server) handleAssignTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to assign task")
 		return
+	}
+
+	// Create history entry with optional role
+	if req.RoleID != nil && *req.RoleID != "" {
+		historyID := uuid.New().String()
+		s.db.Conn().Exec(`
+			INSERT INTO task_history (id, task_id, started_at, state, worker_id, role_id)
+			VALUES (?, ?, ?, 'in-progress', ?, ?)
+		`, historyID, taskID, time.Now(), req.UserID, *req.RoleID)
 	}
 
 	task, err := s.getTaskByID(taskID)
@@ -734,4 +764,306 @@ func (s *Server) handleGetTaskDependencies(w http.ResponseWriter, r *http.Reques
 	}
 
 	sendJSON(w, http.StatusOK, result)
+}
+
+// handleUnassignTask unassigns a task from its current worker
+func (s *Server) handleUnassignTask(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		sendError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	taskID := r.PathValue("task_id")
+
+	// Check task exists
+	var workerID sql.NullString
+	err := s.db.Conn().QueryRow("SELECT worker_id FROM tasks WHERE id = ?", taskID).Scan(&workerID)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusNotFound, "task not found")
+		return
+	}
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to query task")
+		return
+	}
+
+	if !workerID.Valid {
+		sendError(w, http.StatusBadRequest, "task is not assigned")
+		return
+	}
+
+	_, err = s.db.Conn().Exec(`
+		UPDATE tasks
+		SET status = 'idle', worker_id = NULL, updated_by = ?, updated_at = ?
+		WHERE id = ?
+	`, user.ID, time.Now(), taskID)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to unassign task")
+		return
+	}
+
+	task, _ := s.getTaskByID(taskID)
+	sendJSON(w, http.StatusOK, task)
+}
+
+// CommentRequest represents a comment request
+type CommentRequest struct {
+	Text   string `json:"text"`
+	Author string `json:"author,omitempty"`
+}
+
+// handleGetTaskComments returns comments for a task
+func (s *Server) handleGetTaskComments(w http.ResponseWriter, r *http.Request) {
+	taskID := r.PathValue("task_id")
+
+	// Check task exists and get comments
+	var commentsJSON sql.NullString
+	err := s.db.Conn().QueryRow("SELECT comments FROM tasks WHERE id = ?", taskID).Scan(&commentsJSON)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusNotFound, "task not found")
+		return
+	}
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to query task")
+		return
+	}
+
+	var comments []db.Comment
+	if commentsJSON.Valid && commentsJSON.String != "" {
+		if err := json.Unmarshal([]byte(commentsJSON.String), &comments); err != nil {
+			// If invalid JSON, return empty array
+			comments = []db.Comment{}
+		}
+	}
+
+	sendJSON(w, http.StatusOK, comments)
+}
+
+// handleAddTaskComment adds a comment to a task
+func (s *Server) handleAddTaskComment(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		sendError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	taskID := r.PathValue("task_id")
+
+	var req CommentRequest
+	if err := decodeJSON(r, &req); err != nil {
+		sendError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.Text == "" {
+		sendError(w, http.StatusBadRequest, "text is required")
+		return
+	}
+
+	// Get existing comments
+	var commentsJSON sql.NullString
+	err := s.db.Conn().QueryRow("SELECT comments FROM tasks WHERE id = ?", taskID).Scan(&commentsJSON)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusNotFound, "task not found")
+		return
+	}
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to query task")
+		return
+	}
+
+	var comments []db.Comment
+	if commentsJSON.Valid && commentsJSON.String != "" {
+		json.Unmarshal([]byte(commentsJSON.String), &comments)
+	}
+
+	// Add new comment
+	author := req.Author
+	if author == "" {
+		author = user.Username
+	}
+	newComment := db.Comment{
+		Text:      req.Text,
+		Author:    author,
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+	comments = append(comments, newComment)
+
+	// Update task with new comments
+	commentsData, _ := json.Marshal(comments)
+	_, err = s.db.Conn().Exec(`
+		UPDATE tasks SET comments = ?, updated_by = ?, updated_at = ? WHERE id = ?
+	`, string(commentsData), user.ID, time.Now(), taskID)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to add comment")
+		return
+	}
+
+	sendJSON(w, http.StatusCreated, newComment)
+}
+
+// TaskRequestRequest represents a task request by a worker
+type TaskRequestRequest struct {
+	ProjectID *string `json:"project_id,omitempty"`
+	TaskType  *string `json:"task_type,omitempty"`
+}
+
+// handleTaskRequest allows workers to request a task
+func (s *Server) handleTaskRequest(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		sendError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	if user.Type != "worker" {
+		sendError(w, http.StatusForbidden, "only workers can request tasks")
+		return
+	}
+
+	var req TaskRequestRequest
+	if err := decodeJSON(r, &req); err != nil {
+		// Body is optional
+		req = TaskRequestRequest{}
+	}
+
+	// Build query for available task
+	query := `
+		SELECT id, project_id, title, type, description, acceptance_criteria, parent_id, epic_id,
+		       depends_on_task_id, status, worker_id, priority, is_complete, completed_at,
+		       created_at, updated_at, created_by, updated_by, labels, estimated_effort, actual_effort
+		FROM tasks
+		WHERE is_complete = 0 
+		  AND is_deleted = 0
+		  AND status = 'idle'
+		  AND (depends_on_task_id IS NULL 
+		       OR depends_on_task_id IN (SELECT id FROM tasks WHERE is_complete = 1))
+	`
+	args := []interface{}{}
+
+	if req.ProjectID != nil && *req.ProjectID != "" {
+		query += " AND project_id = ?"
+		args = append(args, *req.ProjectID)
+	}
+	if req.TaskType != nil && *req.TaskType != "" {
+		query += " AND type = ?"
+		args = append(args, *req.TaskType)
+	}
+
+	query += `
+		ORDER BY 
+			CASE priority 
+				WHEN 'critical' THEN 1
+				WHEN 'high' THEN 2
+				WHEN 'medium' THEN 3
+				WHEN 'low' THEN 4
+			END,
+			created_at ASC
+		LIMIT 1
+	`
+
+	row := s.db.Conn().QueryRow(query, args...)
+	task, err := scanTask(row)
+	if err != nil {
+		// No work available
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// Assign task to this worker
+	_, err = s.db.Conn().Exec(`
+		UPDATE tasks 
+		SET status = 'active', worker_id = ?, updated_by = ?
+		WHERE id = ?
+	`, user.ID, user.ID, task.ID)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to assign task")
+		return
+	}
+
+	// Create task history entry
+	historyID := uuid.New().String()
+	_, err = s.db.Conn().Exec(`
+		INSERT INTO task_history (id, task_id, started_at, state, worker_id)
+		VALUES (?, ?, ?, 'in-progress', ?)
+	`, historyID, task.ID, time.Now(), user.ID)
+
+	task, _ = s.getTaskByID(task.ID)
+	sendJSON(w, http.StatusOK, task)
+}
+
+// TaskReturnRequest represents a task return request
+type TaskReturnRequest struct {
+	State   string  `json:"state"` // "completed", "failed", "blocked"
+	Summary *string `json:"summary,omitempty"`
+	Result  *string `json:"result,omitempty"`
+}
+
+// handleTaskReturn allows workers to return a completed task
+func (s *Server) handleTaskReturn(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		sendError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	taskID := r.PathValue("task_id")
+
+	var req TaskReturnRequest
+	if err := decodeJSON(r, &req); err != nil {
+		sendError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.State == "" {
+		sendError(w, http.StatusBadRequest, "state is required")
+		return
+	}
+
+	// Verify task is assigned to this worker
+	var workerID sql.NullString
+	err := s.db.Conn().QueryRow("SELECT worker_id FROM tasks WHERE id = ?", taskID).Scan(&workerID)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusNotFound, "task not found")
+		return
+	}
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to query task")
+		return
+	}
+
+	if !workerID.Valid || workerID.String != user.ID {
+		sendError(w, http.StatusForbidden, "task not assigned to you")
+		return
+	}
+
+	// Update task based on state
+	if req.State == "completed" {
+		_, err = s.db.Conn().Exec(`
+			UPDATE tasks
+			SET status = 'idle', is_complete = 1, completed_at = ?, updated_by = ?, updated_at = ?
+			WHERE id = ?
+		`, time.Now(), user.ID, time.Now(), taskID)
+	} else {
+		_, err = s.db.Conn().Exec(`
+			UPDATE tasks
+			SET status = 'idle', worker_id = NULL, updated_by = ?, updated_at = ?
+			WHERE id = ?
+		`, user.ID, time.Now(), taskID)
+	}
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to update task")
+		return
+	}
+
+	// Update task history
+	_, err = s.db.Conn().Exec(`
+		UPDATE task_history
+		SET completed_at = ?, state = ?, summary = ?, result = ?
+		WHERE task_id = ? AND worker_id = ? AND completed_at IS NULL
+	`, time.Now(), req.State, req.Summary, req.Result, taskID, user.ID)
+
+	task, _ := s.getTaskByID(taskID)
+	sendJSON(w, http.StatusOK, task)
 }

@@ -22,6 +22,14 @@ type SavedCredentials struct {
 	Password  string `json:"password"`
 }
 
+type SessionToken struct {
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresAt    string `json:"expires_at"`
+	ServerURL    string `json:"server_url"`
+	Username     string `json:"username"`
+}
+
 func NewConfig(args []string) (*Config, error) {
 	cfg := &Config{
 		ServerURL: os.Getenv("SF_URL"),
@@ -79,7 +87,7 @@ func loadProjectContext() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	configPath := filepath.Join(home, ".config", "task", "config.json")
+	configPath := filepath.Join(home, ".config", "sf", "config.json")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return "", err
@@ -98,7 +106,7 @@ func SaveProjectContext(projectID string) error {
 	if err != nil {
 		return err
 	}
-	configDir := filepath.Join(home, ".config", "task")
+	configDir := filepath.Join(home, ".config", "sf")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return err
 	}
@@ -118,7 +126,7 @@ func ClearProjectContext() error {
 	if err != nil {
 		return err
 	}
-	configPath := filepath.Join(home, ".config", "task", "config.json")
+	configPath := filepath.Join(home, ".config", "sf", "config.json")
 	return os.Remove(configPath)
 }
 
@@ -127,7 +135,7 @@ func LoadCredentials() (*SavedCredentials, error) {
 	if err != nil {
 		return nil, err
 	}
-	credPath := filepath.Join(home, ".config", "task", "credentials.json")
+	credPath := filepath.Join(home, ".config", "sf", "credentials.json")
 	data, err := os.ReadFile(credPath)
 	if err != nil {
 		return nil, err
@@ -144,7 +152,7 @@ func SaveCredentials(serverURL, username, password string) error {
 	if err != nil {
 		return err
 	}
-	configDir := filepath.Join(home, ".config", "task")
+	configDir := filepath.Join(home, ".config", "sf")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return err
 	}
@@ -159,4 +167,54 @@ func SaveCredentials(serverURL, username, password string) error {
 	}
 	credPath := filepath.Join(configDir, "credentials.json")
 	return os.WriteFile(credPath, data, 0600) // 0600 for security - only owner can read/write
+}
+
+func LoadSessionToken() (*SessionToken, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	sessionPath := filepath.Join(home, ".config", "sf", "session.json")
+	data, err := os.ReadFile(sessionPath)
+	if err != nil {
+		return nil, err
+	}
+	var session SessionToken
+	if err := json.Unmarshal(data, &session); err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
+func SaveSessionToken(token, refreshToken, expiresAt, serverURL, username string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	configDir := filepath.Join(home, ".config", "sf")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return err
+	}
+	session := SessionToken{
+		Token:        token,
+		RefreshToken: refreshToken,
+		ExpiresAt:    expiresAt,
+		ServerURL:    serverURL,
+		Username:     username,
+	}
+	data, err := json.Marshal(session)
+	if err != nil {
+		return err
+	}
+	sessionPath := filepath.Join(configDir, "session.json")
+	return os.WriteFile(sessionPath, data, 0600)
+}
+
+func ClearSessionToken() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	sessionPath := filepath.Join(home, ".config", "sf", "session.json")
+	return os.Remove(sessionPath)
 }

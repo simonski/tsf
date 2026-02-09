@@ -42,7 +42,7 @@ type Role struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Rules       string    `json:"rules"`
+	Goals       string    `json:"goals"`
 	Scope       string    `json:"scope"` // system, global, project
 	ProjectID   *string   `json:"project_id,omitempty"`
 	IsActive    bool      `json:"is_active"`
@@ -57,7 +57,7 @@ type Task struct {
 	ID                 string     `json:"id"`
 	ProjectID          string     `json:"project_id"`
 	Title              string     `json:"title"`
-	Type               string     `json:"type"` // epic, story, task, sub-task, bug, spike
+	Type               string     `json:"type"` // epic, task, bug, spike, chore
 	Description        string     `json:"description"`
 	AcceptanceCriteria *string    `json:"acceptance_criteria,omitempty"`
 	ParentID           *string    `json:"parent_id,omitempty"`
@@ -75,6 +75,8 @@ type Task struct {
 	Labels             []string   `json:"labels,omitempty"`
 	EstimatedEffort    *int       `json:"estimated_effort,omitempty"`
 	ActualEffort       *int       `json:"actual_effort,omitempty"`
+	Comments           []Comment  `json:"comments,omitempty"`
+	IsDeleted          bool       `json:"is_deleted"`
 }
 
 // TaskHistory represents a work session on a task
@@ -136,4 +138,20 @@ type WebAuthnSession struct {
 	ExpiresAt        time.Time `json:"expires_at"`
 	SessionType      string    `json:"session_type"` // registration, authentication
 	CreatedAt        time.Time `json:"created_at"`
+}
+
+// Session represents a JWT authentication session
+type Session struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Comment represents a comment on a task
+type Comment struct {
+	Text      string `json:"text"`
+	Author    string `json:"author"`
+	Timestamp string `json:"timestamp"`
 }

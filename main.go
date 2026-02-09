@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -36,7 +37,14 @@ func main() {
 	case "orchestrator":
 		runOrchestrator(os.Args[2:])
 	case "worker":
-		runWorker(os.Args[2:])
+		// Check if it's worker daemon mode (no subcommand or -f flag) or worker CLI commands
+		if len(os.Args) < 3 || os.Args[2] == "-f" || os.Args[2] == "-project_id" {
+			// Worker daemon mode
+			runWorker(os.Args[2:])
+		} else {
+			// Worker CLI commands (create, list, enable, disable, reset-password)
+			runCLI(os.Args[1:])
+		}
 	case "initdb":
 		runInitDB(os.Args[2:])
 	case "tui", "-tui":
@@ -74,6 +82,8 @@ func printUsage() {
 	fmt.Println("  user          Manage users")
 	fmt.Println("  role          Manage roles")
 	fmt.Println("  config        Manage configuration")
+	fmt.Println()
+	fmt.Println("Note: Use 'sf worker' daemon for workers, worker CLI commands are under 'sf task'")
 	fmt.Println()
 	fmt.Println("  version       Show version information")
 	fmt.Println("  help          Show this help message")
@@ -284,6 +294,8 @@ func runCLI(args []string) {
 		handleTaskCommand(client, config, subArgs)
 	case "user":
 		handleUserCommand(client, config, subArgs)
+	case "worker":
+		handleWorkerCommand(client, config, subArgs)
 	case "role":
 		handleRoleCommand(client, config, subArgs)
 	case "config":
@@ -319,37 +331,57 @@ func printCLIUsage() {
 	fmt.Println("SF CLI Commands:")
 	fmt.Println()
 	fmt.Println("Authentication:")
-	fmt.Println("  sf login                     Login and save credentials")
-	fmt.Println("  sf register                  Register a new account")
+	fmt.Println("  sf login                          Login and save session token")
+	fmt.Println("  sf register                       Register a new account")
 	fmt.Println()
-	fmt.Println("  sf project list              List all projects")
-	fmt.Println("  sf project get -id <id>      Get project details")
-	fmt.Println("  sf project set <name>        Set active project")
-	fmt.Println("  sf project unset             Unset active project")
-	fmt.Println("  sf project create -name <n>  Create new project")
+	fmt.Println("Projects:")
+	fmt.Println("  sf project list (-project_id <id> -name <n> -description <d>)  List projects")
+	fmt.Println("  sf project get -project_id <id>   Get project details")
+	fmt.Println("  sf project create -project_id <id> -name <n>  Create new project")
+	fmt.Println("  sf project update -project_id <id> (-name <n> -description <d>)  Update project")
+	fmt.Println("  sf project delete -project_id <id>  Delete project")
+	fmt.Println("  sf project set <name>             Set active project")
+	fmt.Println("  sf project unset                  Unset active project")
 	fmt.Println()
-	fmt.Println("  sf task list                 List all tasks")
-	fmt.Println("  sf task get -id <id>         Get task details")
-	fmt.Println("  sf task create -title <t>    Create new task")
-	fmt.Println("  sf task update -id <id> ...  Update task")
-	fmt.Println("  sf task delete -id <id>      Delete task")
-	fmt.Println("  sf task claim -id <id>       Claim task")
-	fmt.Println("  sf task free -id <id>        Free task")
-	fmt.Println("  sf task assign -id <id> -u   Assign task to user")
-	fmt.Println("  sf task complete -id <id>    Complete task")
-	fmt.Println("  sf task block -id <id> -by B Block task by another task")
-	fmt.Println("  sf task unblock -id <id>     Remove task blocking")
-	fmt.Println("  sf task history -id <id>     Show task history")
-	fmt.Println("  sf task deps -id <id>        Show task dependencies")
+	fmt.Println("Tasks:")
+	fmt.Println("  sf task list (-project_id <p> -status <s> -type <t> -owner <o>)  List tasks")
+	fmt.Println("  sf task get -task_id <id>         Get task details")
+	fmt.Println("  sf task create -title <t>         Create new task")
+	fmt.Println("  sf task update -task_id <id> ...  Update task")
+	fmt.Println("  sf task delete -task_id <id>      Delete task")
+	fmt.Println("  sf task assign -task_id <id> -worker_id <w> -role <r>  Assign task")
+	fmt.Println("  sf task unassign -task_id <id> -worker_id <w>  Unassign task")
+	fmt.Println("  sf task request                   Request a task to work on")
+	fmt.Println("  sf task return -task_id <id> ...  Return completed task")
+	fmt.Println("  sf task comment -task_id <id> -comment <text>  Add comment to task")
+	fmt.Println("  sf task history -task_id <id>     Show task history")
 	fmt.Println()
-	fmt.Println("  sf user list                 List all users")
-	fmt.Println("  sf user create -u <name>     Create user")
-	fmt.Println("  sf user enable -u <name>     Enable user")
-	fmt.Println("  sf user disable -u <name>    Disable user")
+	fmt.Println("Users:")
+	fmt.Println("  sf user list                      List all users")
+	fmt.Println("  sf user create -username <u> -password <p>  Create user")
+	fmt.Println("  sf user enable -username <u>      Enable user")
+	fmt.Println("  sf user disable -username <u>     Disable user")
+	fmt.Println("  sf user reset-password -username <u> -password <p>  Reset user password")
 	fmt.Println()
-	fmt.Println("  sf role list                 List all roles")
-	fmt.Println("  sf role get -id <id>         Get role details")
-	fmt.Println("  sf role create -name <n>     Create role")
+	fmt.Println("Workers:")
+	fmt.Println("  sf worker list                    List all workers")
+	fmt.Println("  sf worker create -worker_id <id>  Create worker")
+	fmt.Println("  sf worker enable -worker_id <id>  Enable worker")
+	fmt.Println("  sf worker disable -worker_id <id> Disable worker")
+	fmt.Println("  sf worker reset-password -worker_id <id>  Reset worker password")
+	fmt.Println()
+	fmt.Println("Roles:")
+	fmt.Println("  sf role list                      List all roles")
+	fmt.Println("  sf role get -role_id <id>         Get role details")
+	fmt.Println("  sf role create -title <t> -description <d> -goals <g>  Create role")
+	fmt.Println("  sf role update -role_id <id> (-title <t> -description <d> -goals <g>)  Update role")
+	fmt.Println("  sf role history -role_id <id>     Show role history")
+	fmt.Println()
+	fmt.Println("Config:")
+	fmt.Println("  sf config list                    List all config")
+	fmt.Println("  sf config set -key K -val V       Set config value")
+	fmt.Println("  sf config delete -key K           Delete config value")
+	fmt.Println()
 	fmt.Println()
 	fmt.Println("  sf config list               List all config")
 	fmt.Println("  sf config set -key K -val V  Set config value")
@@ -371,7 +403,30 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 	subcommand := args[0]
 	switch subcommand {
 	case "list":
-		data, err := client.Request("GET", "/api/v1/projects", nil)
+		// Build query parameters
+		queryParams := ""
+		if projectID := extractFlag(args, "-project_id"); projectID != "" {
+			if queryParams == "" {
+				queryParams = "?project_id=" + projectID
+			} else {
+				queryParams += "&project_id=" + projectID
+			}
+		}
+		if name := extractFlag(args, "-name"); name != "" {
+			if queryParams == "" {
+				queryParams = "?name=" + name
+			} else {
+				queryParams += "&name=" + name
+			}
+		}
+		if desc := extractFlag(args, "-description"); desc != "" {
+			if queryParams == "" {
+				queryParams = "?description=" + desc
+			} else {
+				queryParams += "&description=" + desc
+			}
+		}
+		data, err := client.Request("GET", "/api/v1/projects"+queryParams, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -395,7 +450,7 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 			}
 		}
 	case "get":
-		id := extractFlag(args, "-id")
+		id := extractFlag(args, "-task_id")
 		if id == "" {
 			fmt.Fprintln(os.Stderr, "Error: -id flag required")
 			os.Exit(1)
@@ -407,13 +462,18 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 		}
 		fmt.Println(string(data))
 	case "create":
+		projectID := extractFlag(args, "-project_id")
+		if projectID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -project_id flag required")
+			os.Exit(1)
+		}
 		name := extractFlag(args, "-name")
 		if name == "" {
 			fmt.Fprintln(os.Stderr, "Error: -name flag required")
 			os.Exit(1)
 		}
 		desc := extractFlag(args, "-description")
-		body := map[string]string{"name": name}
+		body := map[string]string{"id": projectID, "name": name}
 		if desc != "" {
 			body["description"] = desc
 		}
@@ -424,6 +484,42 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 		}
 		fmt.Println("Project created:")
 		fmt.Println(string(data))
+	case "update":
+		projectID := extractFlag(args, "-project_id")
+		if projectID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -project_id flag required")
+			os.Exit(1)
+		}
+		body := map[string]interface{}{}
+		if name := extractFlag(args, "-name"); name != "" {
+			body["name"] = name
+		}
+		if desc := extractFlag(args, "-description"); desc != "" {
+			body["description"] = desc
+		}
+		if len(body) == 0 {
+			fmt.Fprintln(os.Stderr, "Error: at least one field to update required")
+			os.Exit(1)
+		}
+		data, err := client.Request("PUT", "/api/v1/projects/"+projectID, body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Project updated:")
+		fmt.Println(string(data))
+	case "delete", "rm":
+		projectID := extractFlag(args, "-project_id")
+		if projectID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -project_id flag required")
+			os.Exit(1)
+		}
+		_, err := client.Request("DELETE", "/api/v1/projects/"+projectID, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Project deleted")
 	case "set":
 		// Set active project context
 		if len(args) < 2 {
@@ -466,6 +562,43 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 			os.Exit(1)
 		}
 		fmt.Println("Active project cleared")
+	case "set-default":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "Error: project ID required")
+			os.Exit(1)
+		}
+		projectID := args[1]
+		// Save as default in config
+		body := map[string]string{"value": projectID}
+		_, err := client.Request("PUT", "/api/v1/config/default_project_id", body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Default project set to: %s\n", projectID)
+	case "get-default":
+		data, err := client.Request("GET", "/api/v1/config/default_project_id", nil)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "No default project set")
+			os.Exit(0)
+		}
+		if config.JSON {
+			fmt.Println(string(data))
+		} else {
+			var configVal map[string]interface{}
+			if err := parseJSON(data, &configVal); err == nil {
+				if val, ok := configVal["value"]; ok {
+					fmt.Printf("Default project: %v\n", val)
+				}
+			}
+		}
+	case "unset-default":
+		_, err := client.Request("DELETE", "/api/v1/config/default_project_id", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Default project cleared")
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown project subcommand: %s\n", subcommand)
 		os.Exit(1)
@@ -481,7 +614,37 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 	subcommand := args[0]
 	switch subcommand {
 	case "list":
-		data, err := client.Request("GET", "/api/v1/tasks", nil)
+		// Build query parameters
+		queryParams := ""
+		if projectID := extractFlag(args, "-project_id"); projectID != "" {
+			if queryParams == "" {
+				queryParams = "?project_id=" + projectID
+			} else {
+				queryParams += "&project_id=" + projectID
+			}
+		}
+		if status := extractFlag(args, "-status"); status != "" {
+			if queryParams == "" {
+				queryParams = "?status=" + status
+			} else {
+				queryParams += "&status=" + status
+			}
+		}
+		if taskType := extractFlag(args, "-type"); taskType != "" {
+			if queryParams == "" {
+				queryParams = "?type=" + taskType
+			} else {
+				queryParams += "&type=" + taskType
+			}
+		}
+		if owner := extractFlag(args, "-owner"); owner != "" {
+			if queryParams == "" {
+				queryParams = "?owner=" + owner
+			} else {
+				queryParams += "&owner=" + owner
+			}
+		}
+		data, err := client.Request("GET", "/api/v1/tasks"+queryParams, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -506,7 +669,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			}
 		}
 	case "get":
-		id := extractFlag(args, "-id")
+		id := extractFlag(args, "-task_id")
 		if id == "" {
 			fmt.Fprintln(os.Stderr, "Error: -id flag required")
 			os.Exit(1)
@@ -553,7 +716,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		fmt.Println("Task created:")
 		fmt.Println(string(data))
 	case "update":
-		id := extractFlag(args, "-id")
+		id := extractFlag(args, "-task_id")
 		if id == "" {
 			fmt.Fprintln(os.Stderr, "Error: -id flag required")
 			os.Exit(1)
@@ -586,7 +749,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		fmt.Println("Task updated:")
 		fmt.Println(string(data))
 	case "delete", "rm":
-		id := extractFlag(args, "-id")
+		id := extractFlag(args, "-task_id")
 		if id == "" {
 			fmt.Fprintln(os.Stderr, "Error: -id flag required")
 			os.Exit(1)
@@ -597,47 +760,25 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Println("Task deleted")
-	case "claim":
-		id := extractFlag(args, "-id")
-		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
-			os.Exit(1)
-		}
-		data, err := client.Request("POST", "/api/v1/tasks/"+id+"/claim", nil)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("Task claimed:")
-		fmt.Println(string(data))
-	case "free":
-		id := extractFlag(args, "-id")
-		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
-			os.Exit(1)
-		}
-		data, err := client.Request("POST", "/api/v1/tasks/"+id+"/free", nil)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("Task freed:")
-		fmt.Println(string(data))
 	case "assign":
-		id := extractFlag(args, "-id")
+		id := extractFlag(args, "-task_id")
 		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
 		}
-		username := extractFlag(args, "-username")
-		if username == "" {
-			username = extractFlag(args, "-u")
+		workerID := extractFlag(args, "-worker_id")
+		role := extractFlag(args, "-role")
+		body := map[string]interface{}{}
+		if workerID != "" {
+			body["worker_id"] = workerID
 		}
-		if username == "" {
-			fmt.Fprintln(os.Stderr, "Error: -username flag required")
+		if role != "" {
+			body["role"] = role
+		}
+		if len(body) == 0 {
+			fmt.Fprintln(os.Stderr, "Error: -worker_id or -role flag required")
 			os.Exit(1)
 		}
-		body := map[string]string{"assignee": username}
 		data, err := client.Request("POST", "/api/v1/tasks/"+id+"/assign", body)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -645,66 +786,98 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		}
 		fmt.Println("Task assigned:")
 		fmt.Println(string(data))
-	case "complete":
-		id := extractFlag(args, "-id")
+	case "unassign":
+		id := extractFlag(args, "-task_id")
 		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
 		}
-		notes := extractFlag(args, "-notes")
-		var body interface{}
-		if notes != "" {
-			body = map[string]string{"notes": notes}
+		workerID := extractFlag(args, "-worker_id")
+		if workerID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -worker_id flag required")
+			os.Exit(1)
 		}
-		data, err := client.Request("POST", "/api/v1/tasks/"+id+"/complete", body)
+		body := map[string]string{"worker_id": workerID}
+		data, err := client.Request("POST", "/api/v1/tasks/"+id+"/unassign", body)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println("Task completed:")
+		fmt.Println("Task unassigned:")
 		fmt.Println(string(data))
-	case "block":
-		id := extractFlag(args, "-id")
-		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
-			os.Exit(1)
+	case "request":
+		body := map[string]interface{}{}
+		if projectID := extractFlag(args, "-project_id"); projectID != "" {
+			body["project_id"] = projectID
 		}
-		blockedBy := extractFlag(args, "-by")
-		if blockedBy == "" {
-			fmt.Fprintln(os.Stderr, "Error: -by flag required (task ID that blocks this task)")
-			os.Exit(1)
+		if taskType := extractFlag(args, "-type"); taskType != "" {
+			body["task_type"] = taskType
 		}
-		body := map[string]interface{}{"depends_on_task_id": blockedBy}
-		data, err := client.Request("PUT", "/api/v1/tasks/"+id, body)
+		data, err := client.Request("POST", "/api/v1/tasks/request", body)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Task %s is now blocked by %s\n", id, blockedBy)
 		if config.JSON {
 			fmt.Println(string(data))
+		} else {
+			var task map[string]interface{}
+			if err := parseJSON(data, &task); err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing response: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("Task assigned to you:")
+			fmt.Printf("ID:    %v\n", task["id"])
+			fmt.Printf("Title: %v\n", task["title"])
+			fmt.Printf("Type:  %v\n", task["type"])
 		}
-	case "unblock":
-		id := extractFlag(args, "-id")
+	case "return":
+		id := extractFlag(args, "-task_id")
 		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
 		}
-		// Send null to clear the dependency
-		body := map[string]interface{}{"depends_on_task_id": nil}
-		data, err := client.Request("PUT", "/api/v1/tasks/"+id, body)
+		state := extractFlag(args, "-state")
+		if state == "" {
+			state = "completed"
+		}
+		body := map[string]interface{}{"state": state}
+		if summary := extractFlag(args, "-summary"); summary != "" {
+			body["summary"] = summary
+		}
+		if result := extractFlag(args, "-result"); result != "" {
+			body["result"] = result
+		}
+		data, err := client.Request("POST", "/api/v1/tasks/"+id+"/return", body)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Task %s is now unblocked\n", id)
-		if config.JSON {
-			fmt.Println(string(data))
+		fmt.Println("Task returned:")
+		fmt.Println(string(data))
+	case "comment":
+		id := extractFlag(args, "-task_id")
+		if id == "" {
+			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
+			os.Exit(1)
 		}
+		text := extractFlag(args, "-comment")
+		if text == "" {
+			fmt.Fprintln(os.Stderr, "Error: -comment flag required")
+			os.Exit(1)
+		}
+		body := map[string]string{"text": text}
+		data, err := client.Request("POST", "/api/v1/tasks/"+id+"/comments", body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Comment added:")
+		fmt.Println(string(data))
 	case "history":
-		id := extractFlag(args, "-id")
+		id := extractFlag(args, "-task_id")
 		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
 		}
 		data, err := client.Request("GET", "/api/v1/tasks/"+id+"/history", nil)
@@ -738,41 +911,6 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 					fmt.Printf("Notes:    %v\n", notes)
 				}
 				fmt.Println()
-			}
-		}
-	case "deps", "dependencies":
-		id := extractFlag(args, "-id")
-		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
-			os.Exit(1)
-		}
-		data, err := client.Request("GET", "/api/v1/tasks/"+id+"/dependencies", nil)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-		if config.JSON {
-			fmt.Println(string(data))
-		} else {
-			var deps map[string]interface{}
-			if err := parseJSON(data, &deps); err != nil {
-				fmt.Fprintf(os.Stderr, "Error parsing response: %v\n", err)
-				os.Exit(1)
-			}
-			if blockedBy, ok := deps["blocked_by"]; ok && blockedBy != nil {
-				fmt.Printf("Blocked by: %v\n", blockedBy)
-			} else {
-				fmt.Println("No dependencies")
-			}
-			if blocking, ok := deps["blocking"]; ok {
-				if blockingArr, ok := blocking.([]interface{}); ok && len(blockingArr) > 0 {
-					fmt.Printf("Blocking %d tasks:\n", len(blockingArr))
-					for _, t := range blockingArr {
-						if task, ok := t.(map[string]interface{}); ok {
-							fmt.Printf("  - %v: %v\n", task["id"], task["title"])
-						}
-					}
-				}
 			}
 		}
 	default:
@@ -879,8 +1017,142 @@ func handleUserCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Printf("User '%s' disabled\n", username)
+	case "reset-password":
+		username := extractFlag(args, "-username")
+		if username == "" {
+			fmt.Fprintln(os.Stderr, "Error: -username flag required")
+			os.Exit(1)
+		}
+		newPassword := extractFlag(args, "-password")
+		if newPassword == "" {
+			fmt.Fprintln(os.Stderr, "Error: -password flag required")
+			os.Exit(1)
+		}
+		body := map[string]string{"username": username, "new_password": newPassword}
+		_, err := client.Request("POST", "/api/v1/users/reset-password", body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Password reset for user '%s'\n", username)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown user subcommand: %s\n", subcommand)
+		os.Exit(1)
+	}
+}
+
+func handleWorkerCommand(client *cli.Client, config *cli.Config, args []string) {
+	if len(args) == 0 {
+		args = []string{"list"}
+	}
+
+	subcommand := args[0]
+	switch subcommand {
+	case "list":
+		data, err := client.Request("GET", "/api/v1/workers", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if config.JSON {
+			fmt.Println(string(data))
+		} else {
+			var workers []map[string]interface{}
+			if err := parseJSON(data, &workers); err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing response: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Found %d workers:\n\n", len(workers))
+			for _, w := range workers {
+				fmt.Printf("ID:       %v\n", w["id"])
+				fmt.Printf("Username: %v\n", w["username"])
+				fmt.Printf("Active:   %v\n", w["is_active"])
+				if projectID, ok := w["project_id"]; ok && projectID != nil {
+					fmt.Printf("Project:  %v\n", projectID)
+				}
+				fmt.Println()
+			}
+		}
+	case "create":
+		workerID := extractFlag(args, "-worker_id")
+		if workerID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -worker_id flag required")
+			os.Exit(1)
+		}
+		// Auto-generate password if not provided
+		password := extractFlag(args, "-password")
+		if password == "" {
+			password = generatePassword(16)
+		}
+		body := map[string]string{
+			"worker_id": workerID,
+			"password":  password,
+		}
+		data, err := client.Request("POST", "/api/v1/workers", body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if config.JSON {
+			fmt.Println(string(data))
+		} else {
+			fmt.Println("Worker created:")
+			fmt.Printf("Worker ID: %s\n", workerID)
+			fmt.Printf("Password:  %s\n", password)
+			fmt.Println("\nSave these credentials - password cannot be retrieved later.")
+		}
+	case "enable":
+		workerID := extractFlag(args, "-worker_id")
+		if workerID == "" && len(args) > 1 {
+			workerID = args[1]
+		}
+		if workerID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -worker_id required")
+			os.Exit(1)
+		}
+		_, err := client.Request("POST", "/api/v1/workers/"+workerID+"/enable", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Worker '%s' enabled\n", workerID)
+	case "disable":
+		workerID := extractFlag(args, "-worker_id")
+		if workerID == "" && len(args) > 1 {
+			workerID = args[1]
+		}
+		if workerID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -worker_id required")
+			os.Exit(1)
+		}
+		_, err := client.Request("POST", "/api/v1/workers/"+workerID+"/disable", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Worker '%s' disabled\n", workerID)
+	case "reset-password":
+		workerID := extractFlag(args, "-worker_id")
+		if workerID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -worker_id flag required")
+			os.Exit(1)
+		}
+		// Auto-generate new password if not provided
+		newPassword := extractFlag(args, "-password")
+		if newPassword == "" {
+			newPassword = generatePassword(16)
+		}
+		body := map[string]string{"new_password": newPassword}
+		_, err := client.Request("POST", "/api/v1/workers/"+workerID+"/reset-password", body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Password reset for worker '%s'\n", workerID)
+		fmt.Printf("New password: %s\n", newPassword)
+		fmt.Println("\nSave this password - it cannot be retrieved later.")
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown worker subcommand: %s\n", subcommand)
 		os.Exit(1)
 	}
 }
@@ -914,7 +1186,7 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 			}
 		}
 	case "get":
-		id := extractFlag(args, "-id")
+		id := extractFlag(args, "-task_id")
 		if id == "" {
 			fmt.Fprintln(os.Stderr, "Error: -id flag required")
 			os.Exit(1)
@@ -926,20 +1198,17 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 		}
 		fmt.Println(string(data))
 	case "create":
-		name := extractFlag(args, "-name")
-		if name == "" {
-			fmt.Fprintln(os.Stderr, "Error: -name flag required")
+		title := extractFlag(args, "-title")
+		if title == "" {
+			fmt.Fprintln(os.Stderr, "Error: -title flag required")
 			os.Exit(1)
 		}
-		body := map[string]interface{}{"name": name}
+		body := map[string]interface{}{"title": title}
 		if desc := extractFlag(args, "-description"); desc != "" {
 			body["description"] = desc
 		}
-		if rules := extractFlag(args, "-rules"); rules != "" {
-			body["rules"] = rules
-		}
-		if scope := extractFlag(args, "-scope"); scope != "" {
-			body["scope"] = scope
+		if goals := extractFlag(args, "-goals"); goals != "" {
+			body["goals"] = goals
 		}
 		data, err := client.Request("POST", "/api/v1/roles", body)
 		if err != nil {
@@ -948,6 +1217,69 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 		}
 		fmt.Println("Role created:")
 		fmt.Println(string(data))
+	case "update":
+		roleID := extractFlag(args, "-role_id")
+		if roleID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -role_id flag required")
+			os.Exit(1)
+		}
+		body := map[string]interface{}{}
+		if title := extractFlag(args, "-title"); title != "" {
+			body["title"] = title
+		}
+		if desc := extractFlag(args, "-description"); desc != "" {
+			body["description"] = desc
+		}
+		if goals := extractFlag(args, "-goals"); goals != "" {
+			body["goals"] = goals
+		}
+		if len(body) == 0 {
+			fmt.Fprintln(os.Stderr, "Error: at least one field to update required")
+			os.Exit(1)
+		}
+		data, err := client.Request("PUT", "/api/v1/roles/"+roleID, body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Role updated:")
+		fmt.Println(string(data))
+	case "history":
+		roleID := extractFlag(args, "-role_id")
+		if roleID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -role_id flag required")
+			os.Exit(1)
+		}
+		data, err := client.Request("GET", "/api/v1/roles/"+roleID+"/history", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if config.JSON {
+			fmt.Println(string(data))
+		} else {
+			var history []map[string]interface{}
+			if err := parseJSON(data, &history); err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing response: %v\n", err)
+				os.Exit(1)
+			}
+			if len(history) == 0 {
+				fmt.Println("No history entries found")
+				return
+			}
+			fmt.Printf("Role history (%d entries):\n\n", len(history))
+			for _, h := range history {
+				fmt.Printf("Version:     %v\n", h["version"])
+				fmt.Printf("Modified:    %v\n", h["modified_at"])
+				if title, ok := h["title"]; ok && title != nil {
+					fmt.Printf("Title:       %v\n", title)
+				}
+				if desc, ok := h["description"]; ok && desc != nil {
+					fmt.Printf("Description: %v\n", desc)
+				}
+				fmt.Println()
+			}
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown role subcommand: %s\n", subcommand)
 		os.Exit(1)
@@ -1054,6 +1386,23 @@ func parseJSON(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
 }
 
+func generatePassword(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+	password := make([]byte, length)
+	for i := range password {
+		// Use crypto/rand for secure random selection
+		randomByte := make([]byte, 1)
+		_, err := rand.Read(randomByte)
+		if err != nil {
+			// Fallback to less secure but still usable method
+			password[i] = charset[i%len(charset)]
+		} else {
+			password[i] = charset[int(randomByte[0])%len(charset)]
+		}
+	}
+	return string(password)
+}
+
 func handleLoginCommand(config *cli.Config) {
 	// Prompt for credentials if not provided
 	if config.Username == "" {
@@ -1070,15 +1419,40 @@ func handleLoginCommand(config *cli.Config) {
 		os.Exit(1)
 	}
 
-	// Test authentication
+	// Call login endpoint to get session token
 	client := cli.NewClient(config)
-	data, err := client.Request("GET", "/api/v1/auth/me", nil)
+	loginBody := map[string]string{
+		"username": config.Username,
+		"password": config.Password,
+	}
+	data, err := client.Request("POST", "/api/v1/auth/login", loginBody)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Login failed: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Save credentials
+	// Parse login response
+	var loginResp struct {
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresAt    string `json:"expires_at"`
+		User         struct {
+			ID       string `json:"id"`
+			Username string `json:"username"`
+			Type     string `json:"type"`
+		} `json:"user"`
+	}
+	if err := parseJSON(data, &loginResp); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse login response: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Save session token
+	if err := cli.SaveSessionToken(loginResp.Token, loginResp.RefreshToken, loginResp.ExpiresAt, config.ServerURL, config.Username); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to save session token: %v\n", err)
+	}
+
+	// Also save credentials as fallback
 	if err := cli.SaveCredentials(config.ServerURL, config.Username, config.Password); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Failed to save credentials: %v\n", err)
 	}
@@ -1086,14 +1460,10 @@ func handleLoginCommand(config *cli.Config) {
 	if config.JSON {
 		fmt.Println(string(data))
 	} else {
-		var user map[string]interface{}
-		if err := parseJSON(data, &user); err == nil {
-			fmt.Printf("Logged in as: %v\n", user["username"])
-			fmt.Printf("Type: %v\n", user["type"])
-			fmt.Println("\nCredentials saved to ~/.config/sf/credentials.json")
-		} else {
-			fmt.Println("Login successful")
-		}
+		fmt.Printf("Logged in as: %v\n", loginResp.User.Username)
+		fmt.Printf("Type: %v\n", loginResp.User.Type)
+		fmt.Printf("\nSession token saved to ~/.config/sf/session.json\n")
+		fmt.Printf("Token expires at: %s\n", loginResp.ExpiresAt)
 	}
 }
 

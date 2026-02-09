@@ -1,5 +1,30 @@
 # NOTES
 
+Consensus
+  All roles in the project should score a project based on their own criteria.
+  0 - 1
+  Once we have achieved a project config consensus - stddeviation and/or average.
+
+GIT and history
+  A pre-state (commit hash)
+  A post-state (commit hash)
+  can be used independently IF those values are stored
+  Then an observer can verify if the work was carried out (VERIFY/TRUST)
+  Can then score the difference between versions.
+
+  Allows for building.
+RISK
+  not all is git
+  not all is buildable
+  most is a hodge-podge of design and contradictions.
+
+  A role can describe the back/forth options for advice.
+
+  Consensus could be objective or subjective.   Human supplied as an agent as well as virtual.
+
+  A role editor is required.
+  A worker editor is required.
+
 Tenets:
   the software is 1% of the effort
   tokens will be burned

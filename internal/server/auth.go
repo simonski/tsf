@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/simonski/task/internal/db"
 )
 
@@ -137,15 +138,16 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate refresh token (expires in 7 days, stored in database)
+	// Generate refresh token (expires in 7 days, stored in sessions table)
 	refreshToken := generateRefreshToken()
 	refreshExpiresAt := time.Now().Add(7 * 24 * time.Hour)
 
-	// Store refresh token in database (use SQLite format for timestamps)
+	// Store session token in database (use SQLite format for timestamps)
+	sessionID := uuid.New().String()
 	_, err = s.db.Conn().Exec(`
-		INSERT OR REPLACE INTO refresh_tokens (token, user_id, expires_at, created_at)
-		VALUES (?, ?, ?, ?)
-	`, refreshToken, user.ID, refreshExpiresAt.Format("2006-01-02 15:04:05"), time.Now().Format("2006-01-02 15:04:05"))
+		INSERT INTO sessions (id, token, user_id, expires_at, created_at)
+		VALUES (?, ?, ?, ?, ?)
+	`, sessionID, refreshToken, user.ID, refreshExpiresAt.Format("2006-01-02 15:04:05"), time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to create session")
 		return
@@ -176,11 +178,11 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Look up refresh token
+	// Look up refresh token in sessions table
 	var userID string
 	var expiresAt string
 	err := s.db.Conn().QueryRow(`
-		SELECT user_id, expires_at FROM refresh_tokens WHERE token = ?
+		SELECT user_id, expires_at FROM sessions WHERE token = ?
 	`, req.RefreshToken).Scan(&userID, &expiresAt)
 	if err != nil {
 		sendError(w, http.StatusUnauthorized, "invalid refresh token")
@@ -191,7 +193,7 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	expiry := parseTimestamp(expiresAt)
 	if time.Now().After(expiry) {
 		// Delete expired token
-		s.db.Conn().Exec("DELETE FROM refresh_tokens WHERE token = ?", req.RefreshToken)
+		s.db.Conn().Exec("DELETE FROM sessions WHERE token = ?", req.RefreshToken)
 		sendError(w, http.StatusUnauthorized, "refresh token expired")
 		return
 	}
@@ -233,11 +235,12 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	refreshExpiresAt := time.Now().Add(7 * 24 * time.Hour)
 
 	// Delete old token and insert new
-	s.db.Conn().Exec("DELETE FROM refresh_tokens WHERE token = ?", req.RefreshToken)
+	s.db.Conn().Exec("DELETE FROM sessions WHERE token = ?", req.RefreshToken)
+	sessionID := uuid.New().String()
 	s.db.Conn().Exec(`
-		INSERT INTO refresh_tokens (token, user_id, expires_at, created_at)
-		VALUES (?, ?, ?, ?)
-	`, newRefreshToken, user.ID, refreshExpiresAt.Format("2006-01-02 15:04:05"), time.Now().Format("2006-01-02 15:04:05"))
+		INSERT INTO sessions (id, token, user_id, expires_at, created_at)
+		VALUES (?, ?, ?, ?, ?)
+	`, sessionID, newRefreshToken, user.ID, refreshExpiresAt.Format("2006-01-02 15:04:05"), time.Now().Format("2006-01-02 15:04:05"))
 
 	sendJSON(w, http.StatusOK, LoginResponse{
 		Token:        token,
@@ -261,7 +264,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.RefreshToken != "" {
-		s.db.Conn().Exec("DELETE FROM refresh_tokens WHERE token = ?", req.RefreshToken)
+		s.db.Conn().Exec("DELETE FROM sessions WHERE token = ?", req.RefreshToken)
 	}
 
 	w.WriteHeader(http.StatusNoContent)

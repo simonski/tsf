@@ -32,7 +32,7 @@ func newRoleFormModel(role *Role) roleFormModel {
 	descInput.Width = 50
 
 	rulesInput := textinput.New()
-	rulesInput.Placeholder = "Rules/Instructions"
+	rulesInput.Placeholder = "Goals/Instructions"
 	rulesInput.CharLimit = 2000
 	rulesInput.Width = 50
 
@@ -49,7 +49,7 @@ func newRoleFormModel(role *Role) roleFormModel {
 	if role != nil {
 		nameInput.SetValue(role.Name)
 		descInput.SetValue(role.Description)
-		rulesInput.SetValue(role.Rules)
+		rulesInput.SetValue(role.Goals)
 		scopeInput.SetValue(role.Scope)
 		activeInput.SetValue(fmt.Sprintf("%t", role.IsActive))
 	} else {
@@ -146,7 +146,7 @@ func (m roleFormModel) submit(client *cli.Client) (roleFormModel, tea.Cmd) {
 	payload := map[string]interface{}{
 		"name":        name,
 		"description": desc,
-		"rules":       rules,
+		"goals":       rules,
 		"scope":       scope,
 		"is_active":   active,
 	}
@@ -186,7 +186,7 @@ func (m roleFormModel) View(width, height int) string {
 		"Description:",
 		m.descInput.View(),
 		"",
-		"Rules:",
+		"Goals:",
 		m.rulesInput.View(),
 		"",
 		"Scope:",

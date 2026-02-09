@@ -5,7 +5,7 @@ Represents a workspace that contains related tasks. Projects provide organizatio
 
 ## Fields
 
-- `id`: uuid (primary key) - Unique identifier for the project
+- `id`: TEXT PRIMARY KEY - Unique identifier for the project (database column name is 'id', but referred to as 'project_id' in API/CLI)
 - `name`: string (required, max 200 chars, unique) - Single sentence name
 - `description`: text (required) - Multi-paragraph description of project goals and context
 - `repository`: string (nullable, max 500 chars) - URL to git repository for code context

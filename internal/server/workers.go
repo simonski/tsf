@@ -120,10 +120,10 @@ func (s *Server) handleWorkerRequest(w http.ResponseWriter, r *http.Request) {
 		var projectID sql.NullString
 		var createdAt, updatedAt string
 		err = s.db.Conn().QueryRow(`
-			SELECT id, name, description, rules, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
+			SELECT id, name, description, goals, scope, project_id, is_active, created_at, updated_at, created_by, updated_by
 			FROM roles WHERE id = ?
 		`, roleID).Scan(
-			&r.ID, &r.Name, &r.Description, &r.Rules, &r.Scope,
+			&r.ID, &r.Name, &r.Description, &r.Goals, &r.Scope,
 			&projectID, &r.IsActive, &createdAt, &updatedAt,
 			&r.CreatedBy, &r.UpdatedBy,
 		)
@@ -201,4 +201,309 @@ func (s *Server) handleListHeartbeats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendJSON(w, http.StatusOK, heartbeats)
+}
+
+// WorkerResponse represents a worker entity in API responses
+type WorkerResponse struct {
+	ID          string  `json:"id"`
+	Username    string  `json:"username"`
+	Status      string  `json:"status"`
+	LastSeen    string  `json:"last_seen,omitempty"`
+	CurrentTask *string `json:"current_task,omitempty"`
+}
+
+// handleListWorkers returns all workers
+func (s *Server) handleListWorkers(w http.ResponseWriter, r *http.Request) {
+	query := `
+		SELECT u.id, u.username, 
+		       COALESCE(h.status, 'offline') as status,
+		       h.last_seen,
+		       h.task_id
+		FROM users u
+		LEFT JOIN heartbeats h ON u.id = h.worker_id
+		WHERE u.type = 'worker' AND u.is_active = 1
+		ORDER BY u.username
+	`
+
+	rows, err := s.db.Conn().Query(query)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to query workers")
+		return
+	}
+	defer rows.Close()
+
+	workers := []WorkerResponse{}
+	for rows.Next() {
+		var worker WorkerResponse
+		var lastSeen sql.NullString
+		var taskID sql.NullString
+
+		err := rows.Scan(&worker.ID, &worker.Username, &worker.Status, &lastSeen, &taskID)
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "failed to scan worker")
+			return
+		}
+
+		if lastSeen.Valid {
+			worker.LastSeen = lastSeen.String
+		}
+		if taskID.Valid {
+			worker.CurrentTask = &taskID.String
+		}
+
+		workers = append(workers, worker)
+	}
+
+	sendJSON(w, http.StatusOK, workers)
+}
+
+// handleGetWorker returns a specific worker
+func (s *Server) handleGetWorker(w http.ResponseWriter, r *http.Request) {
+	workerID := r.PathValue("worker_id")
+
+	query := `
+		SELECT u.id, u.username, 
+		       COALESCE(h.status, 'offline') as status,
+		       h.last_seen,
+		       h.task_id
+		FROM users u
+		LEFT JOIN heartbeats h ON u.id = h.worker_id
+		WHERE u.id = ? AND u.type = 'worker'
+	`
+
+	var worker WorkerResponse
+	var lastSeen sql.NullString
+	var taskID sql.NullString
+
+	err := s.db.Conn().QueryRow(query, workerID).Scan(
+		&worker.ID, &worker.Username, &worker.Status, &lastSeen, &taskID,
+	)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusNotFound, "worker not found")
+		return
+	}
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to get worker")
+		return
+	}
+
+	if lastSeen.Valid {
+		worker.LastSeen = lastSeen.String
+	}
+	if taskID.Valid {
+		worker.CurrentTask = &taskID.String
+	}
+
+	sendJSON(w, http.StatusOK, worker)
+}
+
+// handleGetWorkerTasks returns all tasks assigned to a worker
+func (s *Server) handleGetWorkerTasks(w http.ResponseWriter, r *http.Request) {
+	workerID := r.PathValue("worker_id")
+
+	// Verify worker exists
+	var exists int
+	err := s.db.Conn().QueryRow(`
+		SELECT 1 FROM users WHERE id = ? AND type = 'worker'
+	`, workerID).Scan(&exists)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusNotFound, "worker not found")
+		return
+	}
+
+	query := `
+		SELECT id, project_id, title, type, description, acceptance_criteria, parent_id, epic_id,
+		       depends_on_task_id, status, worker_id, priority, is_complete, completed_at,
+		       created_at, updated_at, created_by, updated_by, labels, estimated_effort, actual_effort
+		FROM tasks
+		WHERE worker_id = ?
+		ORDER BY created_at DESC
+	`
+
+	rows, err := s.db.Conn().Query(query, workerID)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to query tasks")
+		return
+	}
+	defer rows.Close()
+
+	tasks := []db.Task{}
+	for rows.Next() {
+		task, err := scanTask(rows)
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "failed to scan task")
+			return
+		}
+		tasks = append(tasks, task)
+	}
+
+	sendJSON(w, http.StatusOK, tasks)
+}
+
+// handleGetWorkerHistory returns task history for a worker
+func (s *Server) handleGetWorkerHistory(w http.ResponseWriter, r *http.Request) {
+	workerID := r.PathValue("worker_id")
+
+	// Verify worker exists
+	var exists int
+	err := s.db.Conn().QueryRow(`
+		SELECT 1 FROM users WHERE id = ? AND type = 'worker'
+	`, workerID).Scan(&exists)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusNotFound, "worker not found")
+		return
+	}
+
+	query := `
+		SELECT h.id, h.task_id, h.started_at, h.completed_at, h.state, 
+		       h.worker_id, h.role_id, h.result, h.summary,
+		       t.title as task_title
+		FROM task_history h
+		LEFT JOIN tasks t ON h.task_id = t.id
+		WHERE h.worker_id = ?
+		ORDER BY h.started_at DESC
+	`
+
+	rows, err := s.db.Conn().Query(query, workerID)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to query history")
+		return
+	}
+	defer rows.Close()
+
+	type HistoryEntry struct {
+		ID          string  `json:"id"`
+		TaskID      string  `json:"task_id"`
+		TaskTitle   string  `json:"task_title,omitempty"`
+		StartedAt   string  `json:"started_at"`
+		CompletedAt *string `json:"completed_at,omitempty"`
+		State       string  `json:"state"`
+		WorkerID    string  `json:"worker_id"`
+		RoleID      string  `json:"role_id"`
+		Result      *string `json:"result,omitempty"`
+		Summary     *string `json:"summary,omitempty"`
+	}
+
+	history := []HistoryEntry{}
+	for rows.Next() {
+		var entry HistoryEntry
+		var completedAt, result, summary, taskTitle sql.NullString
+
+		err := rows.Scan(
+			&entry.ID, &entry.TaskID, &entry.StartedAt, &completedAt, &entry.State,
+			&entry.WorkerID, &entry.RoleID, &result, &summary, &taskTitle,
+		)
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "failed to scan history")
+			return
+		}
+
+		if completedAt.Valid {
+			entry.CompletedAt = &completedAt.String
+		}
+		if result.Valid {
+			entry.Result = &result.String
+		}
+		if summary.Valid {
+			entry.Summary = &summary.String
+		}
+		if taskTitle.Valid {
+			entry.TaskTitle = taskTitle.String
+		}
+
+		history = append(history, entry)
+	}
+
+	sendJSON(w, http.StatusOK, history)
+}
+
+// WorkerStatsResponse represents worker statistics
+type WorkerStatsResponse struct {
+	TotalTasks     int     `json:"total_tasks"`
+	CompletedTasks int     `json:"completed_tasks"`
+	ActiveTasks    int     `json:"active_tasks"`
+	SuccessRate    float64 `json:"success_rate"`
+}
+
+// handleGetWorkerStats returns statistics for a worker
+func (s *Server) handleGetWorkerStats(w http.ResponseWriter, r *http.Request) {
+	workerID := r.PathValue("worker_id")
+
+	// Verify worker exists
+	var exists int
+	err := s.db.Conn().QueryRow(`
+		SELECT 1 FROM users WHERE id = ? AND type = 'worker'
+	`, workerID).Scan(&exists)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusNotFound, "worker not found")
+		return
+	}
+
+	var stats WorkerStatsResponse
+
+	// Get total tasks from history
+	s.db.Conn().QueryRow(`
+		SELECT COUNT(*) FROM task_history WHERE worker_id = ?
+	`, workerID).Scan(&stats.TotalTasks)
+
+	// Get completed tasks
+	s.db.Conn().QueryRow(`
+		SELECT COUNT(*) FROM task_history 
+		WHERE worker_id = ? AND state = 'completed'
+	`, workerID).Scan(&stats.CompletedTasks)
+
+	// Get active tasks
+	s.db.Conn().QueryRow(`
+		SELECT COUNT(*) FROM tasks 
+		WHERE worker_id = ? AND is_complete = 0
+	`, workerID).Scan(&stats.ActiveTasks)
+
+	// Calculate success rate
+	if stats.TotalTasks > 0 {
+		stats.SuccessRate = float64(stats.CompletedTasks) / float64(stats.TotalTasks) * 100
+	}
+
+	sendJSON(w, http.StatusOK, stats)
+}
+
+// UpdateWorkerRequest represents a worker update request
+type UpdateWorkerRequest struct {
+	Status string `json:"status,omitempty"`
+}
+
+// handleUpdateWorker updates a worker's status
+func (s *Server) handleUpdateWorker(w http.ResponseWriter, r *http.Request) {
+	workerID := r.PathValue("worker_id")
+	user := getUserFromContext(r.Context())
+	if user == nil {
+		sendError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	var req UpdateWorkerRequest
+	if err := decodeJSON(r, &req); err != nil {
+		sendError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	// Verify worker exists
+	var exists int
+	err := s.db.Conn().QueryRow(`
+		SELECT 1 FROM users WHERE id = ? AND type = 'worker'
+	`, workerID).Scan(&exists)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusNotFound, "worker not found")
+		return
+	}
+
+	// Update heartbeat with new status
+	if req.Status != "" {
+		err := s.db.UpsertHeartbeat(workerID, req.Status, nil)
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "failed to update worker")
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

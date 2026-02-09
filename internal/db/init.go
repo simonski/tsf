@@ -83,12 +83,12 @@ func (db *DB) InitializeDatabaseWithPasswords(adminPassword, orchestratorPasswor
 		roles := []struct {
 			name        string
 			description string
-			rules       string
+			goals       string
 		}{
 			{
 				name:        "programmer",
 				description: "Software developer who implements features and fixes bugs",
-				rules: `You are a skilled software developer. Your responsibilities include:
+				goals: `You are a skilled software developer. Your responsibilities include:
 - Writing clean, maintainable, and well-tested code
 - Following best practices and coding standards
 - Implementing features based on specifications
@@ -99,7 +99,7 @@ func (db *DB) InitializeDatabaseWithPasswords(adminPassword, orchestratorPasswor
 			{
 				name:        "tester",
 				description: "Quality assurance specialist who verifies functionality",
-				rules: `You are a quality assurance specialist. Your responsibilities include:
+				goals: `You are a quality assurance specialist. Your responsibilities include:
 - Writing comprehensive test cases
 - Executing manual and automated tests
 - Identifying and documenting bugs
@@ -110,7 +110,7 @@ func (db *DB) InitializeDatabaseWithPasswords(adminPassword, orchestratorPasswor
 			{
 				name:        "analyst",
 				description: "Business analyst who breaks down requirements",
-				rules: `You are a business analyst. Your responsibilities include:
+				goals: `You are a business analyst. Your responsibilities include:
 - Understanding business requirements and user needs
 - Breaking down large requirements into manageable tasks
 - Writing clear and detailed specifications
@@ -121,7 +121,7 @@ func (db *DB) InitializeDatabaseWithPasswords(adminPassword, orchestratorPasswor
 			{
 				name:        "reviewer",
 				description: "Code reviewer who ensures quality and standards",
-				rules: `You are a code reviewer. Your responsibilities include:
+				goals: `You are a code reviewer. Your responsibilities include:
 - Reviewing code for quality, correctness, and maintainability
 - Ensuring adherence to coding standards
 - Identifying potential bugs and security issues
@@ -134,9 +134,9 @@ func (db *DB) InitializeDatabaseWithPasswords(adminPassword, orchestratorPasswor
 		for _, role := range roles {
 			roleID := uuid.New().String()
 			_, err = tx.Exec(`
-				INSERT INTO roles (id, name, description, rules, scope, is_active, created_by, updated_by)
+				INSERT INTO roles (id, name, description, goals, scope, is_active, created_by, updated_by)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-			`, roleID, role.name, role.description, role.rules, "system", true, adminID, adminID)
+			`, roleID, role.name, role.description, role.goals, "system", true, adminID, adminID)
 			if err != nil {
 				return fmt.Errorf("failed to create role %s: %w", role.name, err)
 			}

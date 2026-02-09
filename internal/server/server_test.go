@@ -575,7 +575,7 @@ func TestRoleCRUD(t *testing.T) {
 	rr = doRequest(t, s, "POST", "/api/v1/roles", map[string]string{
 		"name":        "tester",
 		"description": "Tester role",
-		"rules":       "{}",
+		"goals":       "{}",
 		"scope":       "global",
 	})
 	if rr.Code != http.StatusCreated {

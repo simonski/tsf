@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS roles (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT NOT NULL,
-    rules TEXT NOT NULL,
+    goals TEXT NOT NULL,
     scope TEXT NOT NULL CHECK(scope IN ('system', 'global', 'project')),
     project_id TEXT,
     is_active INTEGER NOT NULL DEFAULT 1,
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL,
     title TEXT NOT NULL,
-    type TEXT NOT NULL CHECK(type IN ('epic', 'story', 'task', 'sub-task', 'bug', 'spike')),
+    type TEXT NOT NULL CHECK(type IN ('epic', 'task', 'bug', 'spike', 'chore')),
     description TEXT NOT NULL,
     acceptance_criteria TEXT,
     parent_id TEXT,
@@ -101,6 +101,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     labels TEXT, -- JSON array stored as text
     estimated_effort INTEGER,
     actual_effort INTEGER,
+    comments TEXT, -- JSON array of comment objects stored as text
+    is_deleted INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT,
     FOREIGN KEY (parent_id) REFERENCES tasks(id) ON DELETE SET NULL,
     FOREIGN KEY (epic_id) REFERENCES tasks(id) ON DELETE SET NULL,
@@ -122,6 +124,7 @@ CREATE INDEX idx_tasks_depends_on ON tasks(depends_on_task_id);
 CREATE INDEX idx_tasks_created_by ON tasks(created_by);
 CREATE INDEX idx_tasks_priority ON tasks(priority);
 CREATE INDEX idx_tasks_type ON tasks(type);
+CREATE INDEX idx_tasks_is_deleted ON tasks(is_deleted);
 
 -- Task history: work sessions on tasks
 CREATE TABLE IF NOT EXISTS task_history (
@@ -167,6 +170,20 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 
 CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+
+-- Sessions table: store JWT session tokens
+CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_sessions_token ON sessions(token);
+CREATE INDEX idx_sessions_user ON sessions(user_id);
+CREATE INDEX idx_sessions_expires ON sessions(expires_at);
 
 -- Heartbeats table: track worker and orchestrator activity
 CREATE TABLE IF NOT EXISTS heartbeats (
