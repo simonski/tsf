@@ -352,6 +352,32 @@
             </div>
         </div>
 
+        <!-- Users Screen (Admin Only) -->
+        <div id="users-screen" class="screen hidden">
+            <header class="app-header">
+                <div class="header-left">
+                    <button id="users-menu-toggle" class="hamburger-menu" aria-label="Toggle menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <a href="#" class="logo-link">sf</a>
+                </div>
+                <h1>User Management</h1>
+                <div class="header-controls">
+                    <button id="add-user-button" class="primary-button">+ New User</button>
+                    <a href="#" id="users-profile-link" class="profile-link">Profile</a>
+                    <button id="users-logout-button" class="secondary-button">Logout</button>
+                </div>
+            </header>
+            <div class="users-container">
+                <div id="users-error" class="error-message hidden"></div>
+                <div id="users-list" class="users-list">
+                    <div class="loading-message">Loading users...</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Custom Dialog -->
         <div id="custom-dialog" class="dialog-overlay hidden">
             <div class="dialog-container">

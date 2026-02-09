@@ -283,25 +283,45 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 function showScreen(screenId) {
+    // Hide all screens
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.add('hidden');
     });
-    document.getElementById(screenId).classList.remove('hidden');
-    
-    // Save current screen to localStorage (except auth screen)
-    if (screenId !== 'auth-screen') {
-        localStorage.setItem('lastScreen', screenId);
+
+    // Show the target screen if it exists
+    const targetScreen = document.getElementById(screenId);
+    if (targetScreen) {
+        targetScreen.classList.remove('hidden');
+
+        // Save current screen to localStorage (except auth screen)
+        if (screenId !== 'auth-screen') {
+            localStorage.setItem('lastScreen', screenId);
+        }
+    } else {
+        console.warn(`Screen '${screenId}' not found in HTML - falling back to board`);
+        // Fallback to board screen if target doesn't exist
+        const boardScreen = document.getElementById('board-screen');
+        if (boardScreen) {
+            boardScreen.classList.remove('hidden');
+        }
     }
 }
 
 function showError(elementId, message) {
     const errorElement = document.getElementById(elementId);
-    errorElement.textContent = message;
-    errorElement.classList.remove('hidden');
+    if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.classList.remove('hidden');
+    } else {
+        console.warn(`Error element '${elementId}' not found, message was:`, message);
+    }
 }
 
 function hideError(elementId) {
-    document.getElementById(elementId).classList.add('hidden');
+    const errorElement = document.getElementById(elementId);
+    if (errorElement) {
+        errorElement.classList.add('hidden');
+    }
 }
 
 // Authentication
@@ -752,7 +772,9 @@ async function showConfig() {
         return;
     }
     showScreen('config-screen');
-    await loadConfigList();
+    if (document.getElementById('config-screen')) {
+        await loadConfigList();
+    }
 }
 
 async function loadConfigList() {
@@ -1078,7 +1100,9 @@ async function initializeSession() {
 // Projects Screen
 async function showProjects() {
     showScreen('projects-screen');
-    await loadProjectsList();
+    if (document.getElementById('projects-screen')) {
+        await loadProjectsList();
+    }
 }
 
 async function loadProjectsList() {
@@ -1166,7 +1190,9 @@ async function editProject(project) {
 // Workers Screen
 async function showWorkers() {
     showScreen('workers-screen');
-    await loadWorkersList();
+    if (document.getElementById('workers-screen')) {
+        await loadWorkersList();
+    }
 }
 
 async function loadWorkersList() {
@@ -1217,7 +1243,9 @@ async function loadWorkersList() {
 // Orchestrators Screen
 async function showOrchestrators() {
     showScreen('orchestrators-screen');
-    await loadOrchestratorsList();
+    if (document.getElementById('orchestrators-screen')) {
+        await loadOrchestratorsList();
+    }
 }
 
 async function loadOrchestratorsList() {
@@ -1264,11 +1292,20 @@ async function loadOrchestratorsList() {
 // Users Screen (Admin Only)
 async function showUsers() {
     showScreen('users-screen');
-    await loadUsersList();
+
+    // Only load users list if the screen exists
+    if (document.getElementById('users-screen')) {
+        await loadUsersList();
+    }
 }
 
 async function loadUsersList() {
     const container = document.getElementById('users-list');
+    if (!container) {
+        console.warn('users-list container not found');
+        return;
+    }
+
     hideError('users-error');
     
     try {
@@ -1375,11 +1412,20 @@ async function toggleUserStatus(userId, isActive) {
 // Users Screen (Admin Only)
 async function showUsers() {
     showScreen('users-screen');
-    await loadUsersList();
+
+    // Only load users list if the screen exists
+    if (document.getElementById('users-screen')) {
+        await loadUsersList();
+    }
 }
 
 async function loadUsersList() {
     const container = document.getElementById('users-list');
+    if (!container) {
+        console.warn('users-list container not found');
+        return;
+    }
+
     hideError('users-error');
     
     try {
@@ -1486,7 +1532,9 @@ async function toggleUserStatus(userId, isActive) {
 // Activity Screen
 async function showActivity() {
     showScreen('activity-screen');
-    await loadActivityFeed();
+    if (document.getElementById('activity-screen')) {
+        await loadActivityFeed();
+    }
 }
 
 async function loadActivityFeed() {
@@ -1716,12 +1764,14 @@ document.addEventListener('DOMContentLoaded', () => {
         showConfig();
     });
     
-    document.getElementById('nav-settings').addEventListener('click', (e) => {
-        e.preventDefault();
-        closeNav();
-        showSettings();
-    });
-    
+    // Note: nav-settings element doesn't exist in current HTML
+    // If it's added back, uncomment this:
+    // document.getElementById('nav-settings')?.addEventListener('click', (e) => {
+    //     e.preventDefault();
+    //     closeNav();
+    //     showSettings();
+    // });
+
     document.getElementById('nav-logout').addEventListener('click', (e) => {
         e.preventDefault();
         closeNav();
