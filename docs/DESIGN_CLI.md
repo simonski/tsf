@@ -260,3 +260,14 @@ sf task assign -task_id Y -worker_id XXXXX -role role_id
 sf task unassign -task_id Y -worker_id XXXXX
 ```
 
+
+### Help
+
+All commands should have a help function
+
+```bash
+./sf help command
+# and
+./sf command -h
+````
+
