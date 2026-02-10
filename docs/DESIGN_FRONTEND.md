@@ -13,8 +13,6 @@ to roles in the list, then marked with their activity (idle, active)
 
 The leftmost list is "unassigned"
 
-Uses a websocket to ensure the stories are accurately reflected.
-
 Clicking on a story shows a detail view in the panel on the left which inclues the history of the story.
 
 Page contains a dropdown listing all projects.

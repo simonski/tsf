@@ -13,7 +13,7 @@ USER: a human non-administrator user.
 WORKER: a nonhuman agent
 ORCHESTRATOR: a nonhuman process that reviews all tasks and progress.
 
-The caller must first "login" then their session token will be stored to $SF_HOME or ~/.config/sf/session.json at which point the session token will identify the caller.   At this point -userame and -password are no longer necessary until the session expires.
+The caller must first "login" then their session token will be stored to `$SF_HOME/session.json` at which point the session token will identify the caller.   At this point -userame and -password are no longer necessary until the session expires.
 
 ALL calls requiring authentication to the server MUST be Basic-Auth.
 
@@ -44,7 +44,7 @@ Option `-json` in any command in CLI prints to STDOUT the response in pretty-pri
 Creates a session token valid for the `session.duration` configuration value (or permanently if `session.duration` is `0`).
 
 ```bash
-# login (stores session token in ~/.config/sf/session.json)
+# login (stores session token in $SF_HOME$/session.json)
 # will request username and password if not supplied and not available via env vars
 SF_USERNAME=xxx
 SF_PASSWORD=yyy
@@ -132,7 +132,7 @@ sf config list|ls -json
 `sf project` commands are available to ADMIN, USER, WORKER and ORCHESTRATOR
 
 ```bash
-# activate project NAME as default working project (stores in ~/.config/sf/config.json)
+# activate project NAME as default working project (stores in $SF_HOME/config.json)
 # this avoids the need for -project XXX
 
 sf project create -project_id XXX -name XXX -description XXX
@@ -141,14 +141,14 @@ sf project update -project_id XXX -name XXX -description XXX
 sf project rm|delete -project_id XXX -name XXX -description XXX
 
 # this avoids the need for -project XXX
-# this sets a local (via the ~/.config/ts/config.json) setting to remember the current project
+# this sets a local (via the $SF_HOME/config.json) setting to remember the current project
 sf project set-default -project_id XXX
 
 # prints the current project, or 'default' if none set
-# (via the ~/.config/ts/config.json)current project
+# (via the $SF_HOME/config.json)current project
 sf project get-default 
 
-# deactivate project NAME as default working project (stores in ~/.config/sf/config.json) (revert to project "default")
+# deactivate project NAME as default working project (stores in $SF_HOME/config.json) (revert to project "default")
 sf project unset-default -project_id XXX
 
 # list all projects

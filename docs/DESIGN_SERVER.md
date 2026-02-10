@@ -1,6 +1,6 @@
 The SERVER serves both the FRONTEND and the APIs.
 
-The APIs are restful openAPI spec compatible and include a websocket for realtime access to current WORK state.
+The APIs are restful openAPI spec compatible for realtime access to current WORK state.
 
 The server is really only a CRUD manager of state.  It will not make many "decisions" on what to do.
 

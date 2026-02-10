@@ -108,10 +108,10 @@ git push -u origin feature/<descriptive-name>
 - **ALWAYS** use `make test` for testing
 
 make test             - run all test
-   The ~/.config/test.db should be force rebuilt at the start.
+   The `$SF_HOME/test.db` should be force rebuilt at the start.
    The users should be created with the test_password password.
-   The server shoudl run on :9999
-   Integration and frontend tests shoudl route to :9999
+   The server should run on :9999
+   Integration and frontend tests should route to :9999
    Once complete the server and test processes should exit.
    
 
