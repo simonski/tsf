@@ -1,6 +1,16 @@
 # TODO
 
-- implement the API and client calls to manage ALL Entities via CRUD calls.  Once this is complete we can say the entire ticketing and entity management system is finished as there will be
+- refactor the project entity 
+  use name as the primary key, remove -project_id from frontend, api, backend, database and website
+
+- ./sf task requires 100% playwright coverage
+- ./sf project requires 100% playwright coverage
+- ./sf user requires 100% playwright coverage
+- ./sf role requires 100% playwright coverage
+- ./sf config requires 100% playwright coverage
+
+- implement the API and client calls to manage ALL Entities via CRUD calls.  Once this is complete we can say the entire 
+ticketing and entity management system is finished as there will be
   - openAPI APIs implemented
   - database schemas completed
   - client API calls via the terminal testable

@@ -122,6 +122,9 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("POST /api/v1/tasks/request", s.withAuth(s.handleTaskRequest))
 	mux.HandleFunc("POST /api/v1/tasks/{task_id}/return", s.withAuth(s.handleTaskReturn))
 
+	// Status endpoint
+	mux.HandleFunc("GET /api/v1/status", s.withAuth(s.handleStatus))
+
 	// Worker management endpoints
 	mux.HandleFunc("POST /api/v1/workers/register", s.withAuth(s.handleWorkerRegister))
 	mux.HandleFunc("GET /api/v1/workers", s.withAuth(s.handleListWorkers))

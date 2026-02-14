@@ -1,16 +1,20 @@
 package main
 
 import (
-	"crypto/rand"
+	cryptorand "crypto/rand"
+	_ "embed"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/simonski/task/internal/cli"
 	"github.com/simonski/task/internal/db"
@@ -19,9 +23,11 @@ import (
 	"github.com/simonski/task/internal/tui"
 	"github.com/simonski/task/internal/web"
 	"github.com/simonski/task/internal/worker"
+	"golang.org/x/term"
 )
 
-const version = "1.0.0"
+//go:embed VERSION
+var version string
 
 func main() {
 	if len(os.Args) < 2 {
@@ -49,10 +55,10 @@ func main() {
 		runInitDB(os.Args[2:])
 	case "tui", "-tui":
 		runTUI(os.Args[2:])
-	case "login", "register", "project", "task", "user", "role", "config":
+	case "login", "register", "logout", "project", "task", "user", "role", "config", "status":
 		runCLI(os.Args[1:])
 	case "version", "-v", "--version":
-		fmt.Printf("sf version %s\n", version)
+		fmt.Println(strings.TrimSpace(version))
 	case "help", "-h", "--help":
 		if len(os.Args) >= 3 {
 			// sf help <command>
@@ -81,12 +87,14 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("  login         Login and save credentials")
 	fmt.Println("  register      Register a new account")
+	fmt.Println("  logout        Logout and clear saved credentials")
 	fmt.Println()
 	fmt.Println("  project       Manage projects")
 	fmt.Println("  task          Manage tasks")
 	fmt.Println("  user          Manage users")
 	fmt.Println("  role          Manage roles")
 	fmt.Println("  config        Manage configuration")
+	fmt.Println("  status        Show task statistics by type and status")
 	fmt.Println()
 	fmt.Println("Note: Use 'sf worker' daemon for workers, worker CLI commands are under 'sf task'")
 	fmt.Println()
@@ -1847,13 +1855,17 @@ func runCLI(args []string) {
 		os.Exit(1)
 	}
 
-	// Login and register don't require prior authentication
+	// Login, register, and logout don't require prior authentication
 	if command == "login" {
 		handleLoginCommand(config)
 		return
 	}
 	if command == "register" {
 		handleRegisterCommand(config)
+		return
+	}
+	if command == "logout" {
+		handleLogoutCommand()
 		return
 	}
 
@@ -1883,6 +1895,8 @@ func runCLI(args []string) {
 		handleRoleCommand(client, config, subArgs)
 	case "config":
 		handleConfigCommand(client, config, subArgs)
+	case "status":
+		handleStatusCommand(client, config)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
 		printCLIUsage()
@@ -1916,6 +1930,7 @@ func printCLIUsage() {
 	fmt.Println("Authentication:")
 	fmt.Println("  sf login                          Login and save session token")
 	fmt.Println("  sf register                       Register a new account")
+	fmt.Println("  sf logout                         Logout and clear saved credentials")
 	fmt.Println()
 	fmt.Println("Projects:")
 	fmt.Println("  sf project list (-project_id <id> -name <n> -description <d>)  List projects")
@@ -2975,7 +2990,7 @@ func generatePassword(length int) string {
 	for i := range password {
 		// Use crypto/rand for secure random selection
 		randomByte := make([]byte, 1)
-		_, err := rand.Read(randomByte)
+		_, err := cryptorand.Read(randomByte)
 		if err != nil {
 			// Fallback to less secure but still usable method
 			password[i] = charset[i%len(charset)]
@@ -2986,19 +3001,153 @@ func generatePassword(length int) string {
 	return string(password)
 }
 
+// promptMatrixPassword prompts for a password with matrix-style changing characters
+func promptMatrixPassword(prompt string) (string, error) {
+	fmt.Print(prompt)
+
+	// Read password without echo using terminal raw mode
+	fd := int(os.Stdin.Fd())
+	oldState, err := term.MakeRaw(fd)
+	if err != nil {
+		return "", err
+	}
+	defer term.Restore(fd, oldState)
+
+	var password []byte
+	matrixChars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?"
+	displayChars := make([]rune, 0)
+	animationCounters := make([]int, 0) // Track animation cycles for each character
+
+	// Animation ticker for matrix effect (100ms = slower by 50%)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	// Channel for keyboard input
+	inputChan := make(chan byte, 1)
+	done := make(chan bool)
+
+	// Goroutine to read keyboard input
+	go func() {
+		buf := make([]byte, 1)
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				n, err := os.Stdin.Read(buf)
+				if err != nil || n == 0 {
+					continue
+				}
+				inputChan <- buf[0]
+			}
+		}
+	}()
+
+	// Main loop
+	for {
+		select {
+		case char := <-inputChan:
+			if char == 13 || char == 10 { // Enter key
+				close(done)
+				fmt.Println() // Move to next line
+				return string(password), nil
+			} else if char == 127 || char == 8 { // Backspace
+				if len(password) > 0 {
+					password = password[:len(password)-1]
+					displayChars = displayChars[:len(displayChars)-1]
+					animationCounters = animationCounters[:len(animationCounters)-1]
+					// Clear line and reprint
+					fmt.Print("\r" + prompt)
+					for i := 0; i < len(displayChars); i++ {
+						if displayChars[i] == '*' {
+							fmt.Print("*")
+						} else {
+							fmt.Print(string(displayChars[i]))
+						}
+					}
+					fmt.Print(" \b") // Clear last char
+				}
+			} else if char >= 32 && char < 127 { // Printable characters
+				password = append(password, char)
+				displayChars = append(displayChars, rune(matrixChars[rand.Intn(len(matrixChars))]))
+				animationCounters = append(animationCounters, 0)
+				fmt.Print(string(displayChars[len(displayChars)-1]))
+			}
+
+		case <-ticker.C:
+			// Animate characters that haven't settled yet
+			if len(displayChars) > 0 {
+				needsRedraw := false
+				for i := range displayChars {
+					if displayChars[i] != '*' {
+						animationCounters[i]++
+						// After 8 animation cycles (0.8 seconds), settle to *
+						if animationCounters[i] >= 8 {
+							displayChars[i] = '*'
+							needsRedraw = true
+						} else {
+							// Still animating - change to random character
+							displayChars[i] = rune(matrixChars[rand.Intn(len(matrixChars))])
+							needsRedraw = true
+						}
+					}
+				}
+				// Redraw if any character changed
+				if needsRedraw {
+					fmt.Print("\r" + prompt)
+					for i := 0; i < len(displayChars); i++ {
+						if displayChars[i] == '*' {
+							fmt.Print("*")
+						} else {
+							fmt.Print(string(displayChars[i]))
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func handleStatusCommand(client *cli.Client, config *cli.Config) {
+	data, err := client.Request("GET", "/api/v1/status", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "\nError fetching status: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Pretty print the JSON
+	var result map[string]interface{}
+	if err := json.Unmarshal(data, &result); err != nil {
+		fmt.Fprintf(os.Stderr, "\nError parsing status response: %v\n", err)
+		os.Exit(1)
+	}
+
+	prettyJSON, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "\nError formatting status: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println(string(prettyJSON))
+}
+
 func handleLoginCommand(config *cli.Config) {
 	// Prompt for credentials if not provided
 	if config.Username == "" {
-		fmt.Print("Username: ")
+		fmt.Print("username: ")
 		fmt.Scanln(&config.Username)
 	}
 	if config.Password == "" {
-		fmt.Print("Password: ")
-		fmt.Scanln(&config.Password)
+		var err error
+		config.Password, err = promptMatrixPassword("password: ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "\nError reading password: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	if config.Username == "" || config.Password == "" {
-		fmt.Fprintln(os.Stderr, "Error: Username and password are required")
+		fmt.Fprintln(os.Stderr, "\nError: Username and password are required")
 		os.Exit(1)
 	}
 
@@ -3010,7 +3159,7 @@ func handleLoginCommand(config *cli.Config) {
 	}
 	data, err := client.Request("POST", "/api/v1/auth/login", loginBody)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Login failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "\nLogin failed: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -3026,25 +3175,23 @@ func handleLoginCommand(config *cli.Config) {
 		} `json:"user"`
 	}
 	if err := parseJSON(data, &loginResp); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to parse login response: %v\n", err)
+		fmt.Fprintf(os.Stderr, "\nFailed to parse login response: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Save session token
 	if err := cli.SaveSessionToken(loginResp.Token, loginResp.RefreshToken, loginResp.ExpiresAt, config.ServerURL, config.Username); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to save session token: %v\n", err)
+		fmt.Fprintf(os.Stderr, "\nWarning: Failed to save session token: %v\n", err)
 	}
 
 	// Also save credentials as fallback
 	if err := cli.SaveCredentials(config.ServerURL, config.Username, config.Password); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to save credentials: %v\n", err)
+		fmt.Fprintf(os.Stderr, "\nWarning: Failed to save credentials: %v\n", err)
 	}
 
 	if config.JSON {
 		fmt.Println(string(data))
 	} else {
-		fmt.Printf("Logged in as: %v\n", loginResp.User.Username)
-		fmt.Printf("Type: %v\n", loginResp.User.Type)
 		fmt.Printf("\nSession token saved to ~/.config/sf/session.json\n")
 		fmt.Printf("Token expires at: %s\n", loginResp.ExpiresAt)
 	}
@@ -3053,16 +3200,20 @@ func handleLoginCommand(config *cli.Config) {
 func handleRegisterCommand(config *cli.Config) {
 	// Prompt for credentials if not provided
 	if config.Username == "" {
-		fmt.Print("Username: ")
+		fmt.Print("username: ")
 		fmt.Scanln(&config.Username)
 	}
 	if config.Password == "" {
-		fmt.Print("Password: ")
-		fmt.Scanln(&config.Password)
+		var err error
+		config.Password, err = promptMatrixPassword("password: ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "\nError reading password: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	if config.Username == "" || config.Password == "" {
-		fmt.Fprintln(os.Stderr, "Error: Username and password are required")
+		fmt.Fprintln(os.Stderr, "\nError: Username and password are required")
 		os.Exit(1)
 	}
 
@@ -3075,26 +3226,66 @@ func handleRegisterCommand(config *cli.Config) {
 	}
 	data, err := client.Request("POST", "/api/v1/auth/register", body)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Registration failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "\nRegistration failed: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Save credentials
 	if err := cli.SaveCredentials(config.ServerURL, config.Username, config.Password); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to save credentials: %v\n", err)
+		fmt.Fprintf(os.Stderr, "\nWarning: Failed to save credentials: %v\n", err)
 	}
 
 	if config.JSON {
 		fmt.Println(string(data))
 	} else {
-		var user map[string]interface{}
-		if err := parseJSON(data, &user); err == nil {
-			fmt.Printf("Account created: %v\n", user["username"])
-			fmt.Printf("Type: %v\n", user["type"])
-			fmt.Println("\nCredentials saved to ~/.config/sf/credentials.json")
-			fmt.Println("You can now use 'sf' commands without providing credentials.")
-		} else {
-			fmt.Println("Registration successful")
+		fmt.Println("\nCredentials saved to ~/.config/sf/credentials.json")
+		fmt.Println("You can now use 'sf' commands without providing credentials.")
+	}
+}
+
+func handleLogoutCommand() {
+	// Clear session token
+	sessionErr := cli.ClearSessionToken()
+	sessionDeleted := sessionErr == nil
+	sessionNotExist := os.IsNotExist(sessionErr)
+
+	// Clear saved credentials
+	credErr := cli.ClearCredentials()
+	credDeleted := credErr == nil
+	credNotExist := os.IsNotExist(credErr)
+
+	// Clear project context
+	contextErr := cli.ClearProjectContext()
+	contextDeleted := contextErr == nil
+	contextNotExist := os.IsNotExist(contextErr)
+
+	anythingDeleted := sessionDeleted || credDeleted || contextDeleted
+	anythingExisted := !sessionNotExist || !credNotExist || !contextNotExist
+
+	if anythingDeleted {
+		fmt.Println("Logged out successfully")
+		if sessionDeleted {
+			fmt.Println("  - Session token cleared")
+		}
+		if credDeleted {
+			fmt.Println("  - Credentials cleared")
+		}
+		if contextDeleted {
+			fmt.Println("  - Project context cleared")
+		}
+	} else if !anythingExisted {
+		fmt.Println("No active session found")
+	} else {
+		// Files exist but couldn't be deleted
+		fmt.Println("Error clearing session data")
+		if sessionErr != nil && !sessionNotExist {
+			fmt.Printf("  - Session token: %v\n", sessionErr)
+		}
+		if credErr != nil && !credNotExist {
+			fmt.Printf("  - Credentials: %v\n", credErr)
+		}
+		if contextErr != nil && !contextNotExist {
+			fmt.Printf("  - Project context: %v\n", contextErr)
 		}
 	}
 }

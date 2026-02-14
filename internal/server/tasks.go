@@ -1067,3 +1067,54 @@ func (s *Server) handleTaskReturn(w http.ResponseWriter, r *http.Request) {
 	task, _ := s.getTaskByID(taskID)
 	sendJSON(w, http.StatusOK, task)
 }
+
+// handleStatus returns task counts grouped by type and status
+func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
+	query := `
+		SELECT
+			type,
+			status,
+			COUNT(*) as count
+		FROM tasks
+		WHERE is_deleted = 0
+		GROUP BY type, status
+		ORDER BY type, status
+	`
+
+	rows, err := s.db.Conn().Query(query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	// Build nested structure: type -> status -> count
+	statusData := make(map[string]map[string]int)
+	totals := make(map[string]int)
+	grandTotal := 0
+
+	for rows.Next() {
+		var taskType, status string
+		var count int
+		if err := rows.Scan(&taskType, &status, &count); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if statusData[taskType] == nil {
+			statusData[taskType] = make(map[string]int)
+		}
+		statusData[taskType][status] = count
+		totals[taskType] += count
+		grandTotal += count
+	}
+
+	// Build response structure
+	response := map[string]interface{}{
+		"by_type_and_status": statusData,
+		"totals_by_type":     totals,
+		"grand_total":        grandTotal,
+	}
+
+	sendJSON(w, http.StatusOK, response)
+}

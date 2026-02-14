@@ -159,8 +159,10 @@ test.describe('Comprehensive Navigation Tests', () => {
     ];
 
     for (const nav of navigationSequence) {
-      // Find and click menu toggle (wait for it to be visible)
-      await page.locator('button.hamburger-menu').first().click({ timeout: 5000 });
+      // Find the visible hamburger menu (filter out hidden screens)
+      const menuButton = page.locator('.screen:not(.hidden) button.hamburger-menu');
+      await menuButton.waitFor({ state: 'visible', timeout: 10000 });
+      await menuButton.click();
       await page.locator(nav.link).click();
       await expect(page.locator(nav.screen)).toBeVisible({ timeout: 5000 });
     }
@@ -172,11 +174,17 @@ test.describe('Comprehensive Navigation Tests', () => {
     await page.locator('#nav-overview').click();
     await expect(page.locator('#overview-screen')).toBeVisible();
 
-    await page.locator('button.hamburger-menu').first().click({ timeout: 5000 });
+    // Wait for hamburger menu from visible screen only
+    const menuButton1 = page.locator('.screen:not(.hidden) button.hamburger-menu');
+    await menuButton1.waitFor({ state: 'visible', timeout: 10000 });
+    await menuButton1.click();
     await page.locator('#nav-workers').click();
     await expect(page.locator('#workers-screen')).toBeVisible();
 
-    await page.locator('button.hamburger-menu').first().click({ timeout: 5000 });
+    // Wait for hamburger menu from visible screen only
+    const menuButton2 = page.locator('.screen:not(.hidden) button.hamburger-menu');
+    await menuButton2.waitFor({ state: 'visible', timeout: 10000 });
+    await menuButton2.click();
     await page.locator('#nav-kanban').click();
     await expect(page.locator('#board-screen')).toBeVisible();
 

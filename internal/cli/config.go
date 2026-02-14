@@ -218,3 +218,12 @@ func ClearSessionToken() error {
 	sessionPath := filepath.Join(home, ".config", "sf", "session.json")
 	return os.Remove(sessionPath)
 }
+
+func ClearCredentials() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	credPath := filepath.Join(home, ".config", "sf", "credentials.json")
+	return os.Remove(credPath)
+}

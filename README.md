@@ -1,5 +1,31 @@
 # sf
 
+## Build
+```bash
+make clean build
+```
+
+## Setup
+
+```bash
+./sf initdb --force --populate --password password
+```
+
+## Run
+
+```bash
+./sf server
+```
+
+## Interact
+
+```bash
+./sf login
+
+```
+
+
+
 A kanban-style task management system designed for software development workflows, with support for human users and automated AI workers.
 
 ## Overview
@@ -104,7 +130,7 @@ This will:
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd task
+cd sf
 
 # Build the binary
 make build

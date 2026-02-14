@@ -19,7 +19,17 @@ help:
 	@echo "  run-local         - Run server and orchestrator locally"
 	@echo ""
 
-build: 
+build:
+	@echo "Incrementing version..."
+	@sh -c '\
+		VERSION=$$(cat VERSION | tr -d "\n"); \
+		MAJOR=$$(echo $$VERSION | cut -d. -f1); \
+		MINOR=$$(echo $$VERSION | cut -d. -f2); \
+		PATCH=$$(echo $$VERSION | cut -d. -f3); \
+		NEW_PATCH=$$((PATCH + 1)); \
+		NEW_VERSION="$$MAJOR.$$MINOR.$$NEW_PATCH"; \
+		echo $$NEW_VERSION > VERSION; \
+		echo "Version: $$NEW_VERSION"'
 	@echo "Building sf binary..."
 	@go build -o sf .
 

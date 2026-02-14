@@ -53,6 +53,15 @@ sf login (-username XXX -password YYYY)
 >password:
 ```
 
+## Logout
+
+Deletes any session token locally
+
+```bash
+sf logout
+```
+
+
 ```bash
 # register a new user
 # this API is enabled if the server config `registration.enabled` = `true`
@@ -260,6 +269,22 @@ sf task assign -task_id Y -worker_id XXXXX -role role_id
 sf task unassign -task_id Y -worker_id XXXXX
 ```
 
+### Misc
+
+```bash
+# Prints the version of the binary - a go:embed VERSION file that increments
+# on every `make build`
+sf version
+```
+
+### Status
+
+```bash
+./sf status
+```
+
+Returns a pretty printed json explaining count of epics, stories, bugs by status.
+
 
 ### Help
 
@@ -269,5 +294,4 @@ All commands should have a help function
 ./sf help command
 # and
 ./sf command -h
-````
-
+```
