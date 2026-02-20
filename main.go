@@ -57,7 +57,7 @@ func main() {
 		runInitDB(os.Args[2:])
 	case "tui", "-tui":
 		runTUI(os.Args[2:])
-	case "login", "register", "logout", "project", "task", "epic", "user", "role", "config", "status", "bd", "bead", "beads":
+	case "login", "register", "logout", "project", "task", "epic", "bug", "user", "role", "config", "status", "bd", "bead", "beads":
 		runCLI(os.Args[1:])
 	case "version", "-v", "--version":
 		fmt.Println(strings.TrimSpace(version))
@@ -94,6 +94,7 @@ func printUsage() {
 	fmt.Println("  project       Manage projects")
 	fmt.Println("  task          Manage tasks")
 	fmt.Println("  epic          Manage epics (task alias with implied -type epic)")
+	fmt.Println("  bug           Manage bugs (task alias with implied -type bug)")
 	fmt.Println("  user          Manage users")
 	fmt.Println("  role          Manage roles")
 	fmt.Println("  config        Manage configuration")
@@ -125,6 +126,8 @@ func showCommandHelp(command string) {
 	case "task":
 		printTaskHelp()
 	case "epic":
+		printTaskHelp()
+	case "bug":
 		printTaskHelp()
 	case "user":
 		printUserHelp()
@@ -1909,6 +1912,10 @@ func runCLI(args []string) {
 			showCommandHelp(command)
 			printCurrentDefaultProject(config)
 			return
+		case "bug":
+			showCommandHelp(command)
+			printCurrentDefaultProject(config)
+			return
 		case "task":
 			showCommandHelp(command)
 			printCurrentDefaultProject(config)
@@ -1962,6 +1969,8 @@ func runCLI(args []string) {
 		handleTaskCommand(client, config, subArgs)
 	case "epic":
 		handleTaskCommand(client, config, withImpliedTaskType(subArgs, "epic"))
+	case "bug":
+		handleTaskCommand(client, config, withImpliedTaskType(subArgs, "bug"))
 	case "user":
 		handleUserCommand(client, config, subArgs)
 	case "worker":
@@ -2057,6 +2066,11 @@ func printCLIUsage() {
 	fmt.Println("  sf epic <task-subcommand>         Alias of sf task with implied -type epic")
 	fmt.Println("  sf epic create <title>            Create epic task")
 	fmt.Println("  sf epic list|ls                   List epic tasks")
+	fmt.Println()
+	fmt.Println("Bugs:")
+	fmt.Println("  sf bug <task-subcommand>          Alias of sf task with implied -type bug")
+	fmt.Println("  sf bug create <title>             Create bug task")
+	fmt.Println("  sf bug list|ls                    List bug tasks")
 	fmt.Println()
 	fmt.Println("Users:")
 	fmt.Println("  sf user list|ls                   List all users")
