@@ -1,5 +1,45 @@
 # NOTES
 
+LLMs can:
+  abductive reasoning: no
+  inductive reasoning: yes
+  deductive reasoning: yes
+
+- ROLE&RESPONSIBILITY
+
+- COUNCIL/CONSENSUS
+
+- NO IMPLICIT MEMORY
+
+- ROLE, WORKER, SKILL, STORY, TASK
+
+ Vision → Goal → Initiative → Epic → Story → Task → Subtask
+
+Terms of reference for the work.
+WORK is the catchall term for
+  REQUIREMENT/SPECIFICATION
+  VISION
+  GOAL: 
+  EPIC
+  STORY
+  TASK (can have SUBTASK)
+  DEFECT/BUG 
+
+Status
+  Idle
+  Active
+
+Outcomes
+  Distance from the acceptance criteria
+    meets acceptance criteria
+    
+  Success? 
+  Failure?
+
+
+
+
+
 The ORCHESTRATOR can be designed MANUALLY!
 Just write out the intent and the role and execute it.
 Ensure the steps are in sequence so that you can score it.

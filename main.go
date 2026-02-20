@@ -3049,6 +3049,16 @@ func promptMatrixPassword(prompt string) (string, error) {
 		case char := <-inputChan:
 			if char == 13 || char == 10 { // Enter key
 				close(done)
+				// Settle all remaining characters to asterisks before exiting
+				if len(displayChars) > 0 {
+					for i := range displayChars {
+						displayChars[i] = '*'
+					}
+					fmt.Print("\r" + prompt)
+					for i := 0; i < len(displayChars); i++ {
+						fmt.Print("*")
+					}
+				}
 				fmt.Println() // Move to next line
 				return string(password), nil
 			} else if char == 127 || char == 8 { // Backspace

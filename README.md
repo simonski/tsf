@@ -21,10 +21,7 @@ make clean build
 
 ```bash
 ./sf login
-
 ```
-
-
 
 A kanban-style task management system designed for software development workflows, with support for human users and automated AI workers.
 
