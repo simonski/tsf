@@ -1,4 +1,4 @@
-.PHONY: help build clean test test-go test-go-unit test-go-coverage test-cli-harness test-e2e test-e2e-setup docker docker-up docker-down run-local
+.PHONY: help build clean test test-go test-go-unit test-go-coverage test-cli test-cli-harness test-e2e test-e2e-setup docker docker-up docker-down run-local
 
 help:
 	@echo "sf - Software Factory - Makefile"
@@ -10,7 +10,8 @@ help:
 	@echo "  test-go           - Run all Go tests"
 	@echo "  test-go-unit      - Run Go unit tests only"
 	@echo "  test-go-coverage  - Run Go tests with coverage report"
-	@echo "  test-cli-harness  - Run markdown-driven CLI integration harness"
+	@echo "  test-cli          - Run markdown-driven CLI integration harness"
+	@echo "  test-cli-harness  - Alias of test-cli"
 	@echo "  test-e2e-setup    - Install Playwright dependencies"
 	@echo "  test-e2e          - Run Playwright E2E tests"
 	@echo "  test-e2e-ui       - Run Playwright tests in UI mode"
@@ -57,9 +58,11 @@ test-go-coverage:
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
-test-cli-harness:
+test-cli:
 	@echo "Running CLI harness integration test..."
 	@go test -run TestCLIHarnessFromMarkdown ./...
+
+test-cli-harness: test-cli
 
 test-e2e-setup:
 	@echo "Installing Playwright dependencies..."
