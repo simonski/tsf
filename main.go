@@ -57,7 +57,7 @@ func main() {
 		runInitDB(os.Args[2:])
 	case "tui", "-tui":
 		runTUI(os.Args[2:])
-	case "login", "register", "logout", "project", "task", "user", "role", "config", "status", "bd", "bead", "beads":
+	case "login", "register", "logout", "project", "task", "epic", "user", "role", "config", "status", "bd", "bead", "beads":
 		runCLI(os.Args[1:])
 	case "version", "-v", "--version":
 		fmt.Println(strings.TrimSpace(version))
@@ -93,6 +93,7 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("  project       Manage projects")
 	fmt.Println("  task          Manage tasks")
+	fmt.Println("  epic          Manage epics (task alias with implied -type epic)")
 	fmt.Println("  user          Manage users")
 	fmt.Println("  role          Manage roles")
 	fmt.Println("  config        Manage configuration")
@@ -122,6 +123,8 @@ func showCommandHelp(command string) {
 	case "project":
 		printProjectHelp()
 	case "task":
+		printTaskHelp()
+	case "epic":
 		printTaskHelp()
 	case "user":
 		printUserHelp()
@@ -1902,6 +1905,10 @@ func runCLI(args []string) {
 			showCommandHelp(command)
 			printCurrentDefaultProject(config)
 			return
+		case "epic":
+			showCommandHelp(command)
+			printCurrentDefaultProject(config)
+			return
 		case "task":
 			showCommandHelp(command)
 			printCurrentDefaultProject(config)
@@ -1953,6 +1960,8 @@ func runCLI(args []string) {
 		handleProjectCommand(client, config, subArgs)
 	case "task":
 		handleTaskCommand(client, config, subArgs)
+	case "epic":
+		handleTaskCommand(client, config, withImpliedTaskType(subArgs, "epic"))
 	case "user":
 		handleUserCommand(client, config, subArgs)
 	case "worker":
@@ -2002,6 +2011,18 @@ func filterNonFlags(args []string) []string {
 	return result
 }
 
+func withImpliedTaskType(args []string, impliedType string) []string {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "-type" && i+1 < len(args) {
+			return args
+		}
+	}
+	out := make([]string, 0, len(args)+2)
+	out = append(out, args...)
+	out = append(out, "-type", impliedType)
+	return out
+}
+
 func printCLIUsage() {
 	fmt.Println("SF CLI Commands:")
 	fmt.Println()
@@ -2031,6 +2052,11 @@ func printCLIUsage() {
 	fmt.Println("  sf task return -task_id <id> ...  Return completed task")
 	fmt.Println("  sf task comment -task_id <id> -comment <text>  Add comment to task")
 	fmt.Println("  sf task history -task_id <id>     Show task history")
+	fmt.Println()
+	fmt.Println("Epics:")
+	fmt.Println("  sf epic <task-subcommand>         Alias of sf task with implied -type epic")
+	fmt.Println("  sf epic create <title>            Create epic task")
+	fmt.Println("  sf epic list|ls                   List epic tasks")
 	fmt.Println()
 	fmt.Println("Users:")
 	fmt.Println("  sf user list|ls                   List all users")
