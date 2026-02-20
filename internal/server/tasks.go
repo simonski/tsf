@@ -107,8 +107,8 @@ func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ProjectID == "" || req.Title == "" || req.Type == "" || req.Description == "" {
-		sendError(w, http.StatusBadRequest, "project_id, title, type, and description are required")
+	if req.ProjectID == "" || req.Title == "" || req.Type == "" {
+		sendError(w, http.StatusBadRequest, "project_id, title, and type are required")
 		return
 	}
 

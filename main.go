@@ -2416,20 +2416,25 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		printResponseData(data, config)
 	case "create":
 		title := extractFlag(args, "-title")
+		if title == "" && len(args) > 1 {
+			title = args[1]
+		}
 		if title == "" {
-			fmt.Fprintln(os.Stderr, "Error: -title flag required")
+			fmt.Fprintln(os.Stderr, "Error: -title flag required (or provide positional title)")
 			os.Exit(1)
 		}
 		body := map[string]interface{}{"title": title}
 		if desc := extractFlag(args, "-description"); desc != "" {
 			body["description"] = desc
 		} else {
-			body["description"] = title // Use title as default description
+			body["description"] = ""
 		}
 		if projectID := extractFlag(args, "-project_id"); projectID != "" {
 			body["project_id"] = projectID
 		} else if config.ProjectID != "" {
 			body["project_id"] = config.ProjectID
+		} else {
+			body["project_id"] = "default"
 		}
 		if taskType := extractFlag(args, "-type"); taskType != "" {
 			body["type"] = taskType
