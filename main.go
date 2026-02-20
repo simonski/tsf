@@ -1234,14 +1234,6 @@ func printTaskHelp() {
 	fmt.Println()
 	fmt.Println("  The orchestrator won't assign task_xyz789 until task_abc123 completes.")
 	fmt.Println()
-	fmt.Println("TIPS")
-	fmt.Println()
-	fmt.Println("  • Set default project: sf project set-default <id>")
-	fmt.Println("  • Use priorities (1-10) to influence orchestrator assignment")
-	fmt.Println("  • Add comments for collaboration and debugging")
-	fmt.Println("  • Check history to understand task lifecycle")
-	fmt.Println("  • Use -json with jq for advanced filtering")
-	fmt.Println()
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 }
 
