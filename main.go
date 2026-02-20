@@ -3979,20 +3979,65 @@ func handleStatusCommand(client *cli.Client, config *cli.Config) {
 		os.Exit(1)
 	}
 
-	// Pretty print the JSON
 	var result map[string]interface{}
 	if err := json.Unmarshal(data, &result); err != nil {
 		fmt.Fprintf(os.Stderr, "\nError parsing status response: %v\n", err)
 		os.Exit(1)
 	}
 
-	prettyJSON, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\nError formatting status: %v\n", err)
-		os.Exit(1)
+	if config.JSON {
+		prettyJSON, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "\nError formatting status: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(string(prettyJSON))
+		printCurrentDefaultProject(config)
+		return
 	}
 
-	fmt.Println(string(prettyJSON))
+	fmt.Println("Status Summary")
+	fmt.Println()
+
+	if grand, ok := result["grand_total"]; ok {
+		fmt.Printf("Total tasks: %v\n", grand)
+	}
+
+	if totals, ok := result["totals_by_type"].(map[string]interface{}); ok && len(totals) > 0 {
+		fmt.Println()
+		fmt.Println("Totals by type:")
+		typeNames := make([]string, 0, len(totals))
+		for taskType := range totals {
+			typeNames = append(typeNames, taskType)
+		}
+		sort.Strings(typeNames)
+		for _, taskType := range typeNames {
+			fmt.Printf("  %s: %v\n", taskType, totals[taskType])
+		}
+	}
+
+	if grouped, ok := result["by_type_and_status"].(map[string]interface{}); ok && len(grouped) > 0 {
+		fmt.Println()
+		fmt.Println("By type and status:")
+		typeNames := make([]string, 0, len(grouped))
+		for taskType := range grouped {
+			typeNames = append(typeNames, taskType)
+		}
+		sort.Strings(typeNames)
+		for _, taskType := range typeNames {
+			fmt.Printf("  %s:\n", taskType)
+			statusMap, _ := grouped[taskType].(map[string]interface{})
+			statusNames := make([]string, 0, len(statusMap))
+			for status := range statusMap {
+				statusNames = append(statusNames, status)
+			}
+			sort.Strings(statusNames)
+			for _, status := range statusNames {
+				fmt.Printf("    %s: %v\n", status, statusMap[status])
+			}
+		}
+	}
+
 	printCurrentDefaultProject(config)
 }
 
