@@ -2000,7 +2000,7 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 
 	subcommand := args[0]
 	switch subcommand {
-	case "list":
+	case "list", "ls":
 		// Build query parameters
 		queryParams := ""
 		if projectID := extractFlag(args, "-project_id"); projectID != "" {
@@ -2211,7 +2211,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 
 	subcommand := args[0]
 	switch subcommand {
-	case "list":
+	case "list", "ls":
 		// Build query parameters
 		queryParams := ""
 		if projectID := extractFlag(args, "-project_id"); projectID != "" {
@@ -2524,7 +2524,7 @@ func handleUserCommand(client *cli.Client, config *cli.Config, args []string) {
 
 	subcommand := args[0]
 	switch subcommand {
-	case "list":
+	case "list", "ls":
 		data, err := client.Request("GET", "/api/v1/users", nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -2646,7 +2646,7 @@ func handleWorkerCommand(client *cli.Client, config *cli.Config, args []string) 
 
 	subcommand := args[0]
 	switch subcommand {
-	case "list":
+	case "list", "ls":
 		data, err := client.Request("GET", "/api/v1/workers", nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -2762,7 +2762,7 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 
 	subcommand := args[0]
 	switch subcommand {
-	case "list":
+	case "list", "ls":
 		data, err := client.Request("GET", "/api/v1/roles", nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -2891,7 +2891,7 @@ func handleConfigCommand(client *cli.Client, config *cli.Config, args []string) 
 
 	subcommand := args[0]
 	switch subcommand {
-	case "list":
+	case "list", "ls":
 		data, err := client.Request("GET", "/api/v1/config", nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
