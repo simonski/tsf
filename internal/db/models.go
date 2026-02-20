@@ -83,7 +83,7 @@ type Task struct {
 	Title              string     `json:"title"`
 	Type               string     `json:"type"` // epic, task, bug, spike, chore
 	Description        string     `json:"description"`
-	AcceptanceCriteria *string    `json:"acceptance_criteria,omitempty"`
+	AcceptanceCriteria *string    `json:"acceptance_criteria"`
 	ParentID           *string    `json:"parent_id,omitempty"`
 	EpicID             *string    `json:"epic_id,omitempty"`
 	DependsOnTaskID    *string    `json:"depends_on_task_id,omitempty"`

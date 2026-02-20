@@ -2838,7 +2838,11 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		if priority := extractFlag(args, "-priority"); priority != "" {
 			body["priority"] = priority
 		}
-		if acceptance := extractFlag(args, "-acceptance"); acceptance != "" {
+		acceptance := extractFlag(args, "-acceptance")
+		if acceptance == "" {
+			acceptance = extractFlag(args, "-acceptance_criteria")
+		}
+		if acceptance != "" {
 			body["acceptance_criteria"] = acceptance
 		}
 		data, err := client.Request("POST", "/api/v1/tasks", body)
@@ -2867,7 +2871,11 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		if priority := extractFlag(args, "-priority"); priority != "" {
 			body["priority"] = priority
 		}
-		if acceptance := extractFlag(args, "-acceptance"); acceptance != "" {
+		acceptance := extractFlag(args, "-acceptance")
+		if acceptance == "" {
+			acceptance = extractFlag(args, "-acceptance_criteria")
+		}
+		if acceptance != "" {
 			body["acceptance_criteria"] = acceptance
 		}
 		if len(body) == 0 {

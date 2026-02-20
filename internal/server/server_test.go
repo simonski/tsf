@@ -337,6 +337,39 @@ func TestCreateTaskUnknownProjectReturns404(t *testing.T) {
 	}
 }
 
+func TestTaskGetReturnsAcceptanceCriteriaField(t *testing.T) {
+	s, cleanup := testServer(t)
+	defer cleanup()
+
+	criteria := "must pass tests"
+	rr := doRequest(t, s, "POST", "/api/v1/tasks", map[string]interface{}{
+		"project_id":          "project-1",
+		"title":               "Task with AC",
+		"description":         "desc",
+		"type":                "task",
+		"acceptance_criteria": criteria,
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("Create task failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+	var created map[string]interface{}
+	parseJSON(t, rr, &created)
+	taskID := created["id"].(string)
+
+	rr = doRequest(t, s, "GET", "/api/v1/tasks/"+taskID, nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Get task failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+	var got map[string]interface{}
+	parseJSON(t, rr, &got)
+	if _, ok := got["acceptance_criteria"]; !ok {
+		t.Fatalf("Expected acceptance_criteria key in task response")
+	}
+	if got["acceptance_criteria"] != criteria {
+		t.Fatalf("Expected acceptance_criteria %q, got %v", criteria, got["acceptance_criteria"])
+	}
+}
+
 func TestTaskWorkflow(t *testing.T) {
 	s, cleanup := testServer(t)
 	defer cleanup()
