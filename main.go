@@ -1000,11 +1000,11 @@ func printProjectHelp() {
 	fmt.Println("  sf project <subcommand> [options]")
 	fmt.Println()
 	fmt.Println("SUBCOMMANDS")
-	fmt.Println("  list                  List all projects")
+	fmt.Println("  list|ls               List all projects")
 	fmt.Println("  get <id>              Get project details by ID")
 	fmt.Println("  create <name>         Create a new project")
 	fmt.Println("  update <id>           Update project details")
-	fmt.Println("  delete <id>           Delete a project")
+	fmt.Println("  delete|rm <id>        Delete a project")
 	fmt.Println("  set-default <id>      Set default project for commands")
 	fmt.Println("  get-default           Show current default project")
 	fmt.Println("  unset-default         Clear default project")
@@ -1019,6 +1019,7 @@ func printProjectHelp() {
 	fmt.Println()
 	fmt.Println("  # List all projects")
 	fmt.Println("  $ sf project list")
+	fmt.Println("  $ sf project ls")
 	fmt.Println()
 	fmt.Println("  # Create a new project")
 	fmt.Println("  $ sf project create \"API Development\"")
@@ -1095,11 +1096,11 @@ func printTaskHelp() {
 	fmt.Println("SUBCOMMANDS")
 	fmt.Println()
 	fmt.Println("  Task Operations:")
-	fmt.Println("    list                List all tasks")
+	fmt.Println("    list|ls             List all tasks")
 	fmt.Println("    get <id>            Get task details")
 	fmt.Println("    create <title>      Create a new task")
 	fmt.Println("    update <id>         Update task details")
-	fmt.Println("    delete <id>         Delete a task")
+	fmt.Println("    delete|rm <id>      Delete a task")
 	fmt.Println()
 	fmt.Println("  Task Lifecycle:")
 	fmt.Println("    assign <id>         Assign task to worker")
@@ -1133,6 +1134,7 @@ func printTaskHelp() {
 	fmt.Println()
 	fmt.Println("  # List all tasks")
 	fmt.Println("  $ sf task list")
+	fmt.Println("  $ sf task ls")
 	fmt.Println()
 	fmt.Println("  # Create a simple task")
 	fmt.Println("  $ sf task create \"Fix login bug\"")
@@ -1490,10 +1492,10 @@ func printConfigHelp() {
 	fmt.Println("  sf config <subcommand> [options]")
 	fmt.Println()
 	fmt.Println("SUBCOMMANDS")
-	fmt.Println("  list                  List all configuration settings")
+	fmt.Println("  list|ls               List all configuration settings")
 	fmt.Println("  get <key>             Get configuration value by key")
 	fmt.Println("  set <key> <value>     Set configuration value (admin only)")
-	fmt.Println("  delete <key>          Delete configuration key (admin only)")
+	fmt.Println("  delete|rm <key>       Delete configuration key (admin only)")
 	fmt.Println()
 	fmt.Println("GLOBAL OPTIONS")
 	fmt.Println("  -url <url>            Server URL (default: http://localhost:8080)")
@@ -1505,6 +1507,7 @@ func printConfigHelp() {
 	fmt.Println()
 	fmt.Println("  # List all configuration")
 	fmt.Println("  $ sf config list")
+	fmt.Println("  $ sf config ls")
 	fmt.Println()
 	fmt.Println("  # Get a specific value")
 	fmt.Println("  $ sf config get default_project_id")
@@ -1517,6 +1520,7 @@ func printConfigHelp() {
 	fmt.Println()
 	fmt.Println("  # Delete a configuration key")
 	fmt.Println("  $ sf config delete deprecated_setting")
+	fmt.Println("  $ sf config rm deprecated_setting")
 	fmt.Println()
 	fmt.Println("  # List in JSON format")
 	fmt.Println("  $ sf config list -json")
@@ -1882,6 +1886,15 @@ func runCLI(args []string) {
 	command := args[0]
 	subArgs := filterNonFlags(args[1:])
 
+	// Consistent no-arg UX for command groups: show command help/subcommands.
+	if len(subArgs) == 0 {
+		switch command {
+		case "project", "task", "user", "worker", "role", "config", "beads", "bead", "bd":
+			showCommandHelp(command)
+			return
+		}
+	}
+
 	// Check for -h flag before requiring authentication
 	for _, arg := range args[1:] {
 		if arg == "-h" {
@@ -2049,8 +2062,8 @@ func printCLIUsage() {
 
 func handleProjectCommand(client *cli.Client, config *cli.Config, args []string) {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "Error: project subcommand required (list, get)")
-		os.Exit(1)
+		printProjectHelp()
+		return
 	}
 
 	subcommand := args[0]
@@ -2260,8 +2273,8 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 
 func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "Error: task subcommand required (list, get)")
-		os.Exit(1)
+		printTaskHelp()
+		return
 	}
 
 	subcommand := args[0]
@@ -2574,7 +2587,8 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 
 func handleUserCommand(client *cli.Client, config *cli.Config, args []string) {
 	if len(args) == 0 {
-		args = []string{"list"}
+		printUserHelp()
+		return
 	}
 
 	subcommand := args[0]
@@ -2733,7 +2747,8 @@ func handleUserCommand(client *cli.Client, config *cli.Config, args []string) {
 
 func handleWorkerCommand(client *cli.Client, config *cli.Config, args []string) {
 	if len(args) == 0 {
-		args = []string{"list"}
+		printWorkerHelp()
+		return
 	}
 
 	subcommand := args[0]
@@ -2849,7 +2864,8 @@ func handleWorkerCommand(client *cli.Client, config *cli.Config, args []string) 
 
 func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 	if len(args) == 0 {
-		args = []string{"list"}
+		printRoleHelp()
+		return
 	}
 
 	subcommand := args[0]
@@ -2993,7 +3009,8 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 
 func handleConfigCommand(client *cli.Client, config *cli.Config, args []string) {
 	if len(args) == 0 {
-		args = []string{"list"}
+		printConfigHelp()
+		return
 	}
 
 	subcommand := args[0]
