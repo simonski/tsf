@@ -3426,6 +3426,7 @@ func handleStatusCommand(client *cli.Client, config *cli.Config) {
 	}
 
 	fmt.Println(string(prettyJSON))
+	printCurrentDefaultProject(config)
 }
 
 func handleLoginCommand(config *cli.Config) {
