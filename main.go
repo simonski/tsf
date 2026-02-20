@@ -2248,12 +2248,45 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 		}
 		fmt.Println("Active project cleared")
 	case "set-default":
-		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "Error: project ID required")
+		projectID := extractFlag(args, "-project_id")
+		projectName := extractFlag(args, "-name")
+
+		// Positional fallback remains supported for compatibility.
+		if projectID == "" && projectName == "" && len(args) > 1 {
+			projectID = args[1]
+		}
+
+		if projectID == "" && projectName == "" {
+			fmt.Fprintln(os.Stderr, "Error: -project_id or -name required")
 			os.Exit(1)
 		}
-		projectID := args[1]
-		// Save as default in config
+
+		if projectID == "" && projectName != "" {
+			// Resolve project name to ID.
+			data, err := client.Request("GET", "/api/v1/projects", nil)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			var projects []map[string]interface{}
+			if err := parseJSON(data, &projects); err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing response: %v\n", err)
+				os.Exit(1)
+			}
+			for _, p := range projects {
+				name, okName := p["name"].(string)
+				id, okID := p["id"].(string)
+				if okName && okID && name == projectName {
+					projectID = id
+					break
+				}
+			}
+			if projectID == "" {
+				fmt.Fprintf(os.Stderr, "Error: project '%s' not found\n", projectName)
+				os.Exit(1)
+			}
+		}
+
 		body := map[string]string{"value": projectID}
 		_, err := client.Request("PUT", "/api/v1/config/default_project_id", body)
 		if err != nil {
