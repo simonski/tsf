@@ -1225,11 +1225,12 @@ func printUserHelp() {
 	fmt.Println("  sf user <subcommand> [options]")
 	fmt.Println()
 	fmt.Println("SUBCOMMANDS")
-	fmt.Println("  list                  List all users")
+	fmt.Println("  list|ls               List all users")
 	fmt.Println("  get <id>              Get user details by ID")
 	fmt.Println("  create <username>     Create a new user")
 	fmt.Println("  enable <username>     Enable a user account")
 	fmt.Println("  disable <username>    Disable a user account")
+	fmt.Println("  delete|rm <username>  Soft-delete user account (disable)")
 	fmt.Println("  reset-password <id>   Reset user password (admin only)")
 	fmt.Println()
 	fmt.Println("GLOBAL OPTIONS")
@@ -1358,11 +1359,11 @@ func printRoleHelp() {
 	fmt.Println("  sf role <subcommand> [options]")
 	fmt.Println()
 	fmt.Println("SUBCOMMANDS")
-	fmt.Println("  list                  List all roles")
+	fmt.Println("  list|ls               List all roles")
 	fmt.Println("  get <id>              Get role details by ID")
 	fmt.Println("  create <name>         Create a new role")
 	fmt.Println("  update <id>           Update role details")
-	fmt.Println("  delete <id>           Delete a role")
+	fmt.Println("  delete|rm <id>        Delete a role")
 	fmt.Println("  history <id>          View role change history")
 	fmt.Println()
 	fmt.Println("GLOBAL OPTIONS")
@@ -1975,20 +1976,20 @@ func printCLIUsage() {
 	fmt.Println("  sf logout                         Logout and clear saved credentials")
 	fmt.Println()
 	fmt.Println("Projects:")
-	fmt.Println("  sf project list (-project_id <id> -name <n> -description <d>)  List projects")
+	fmt.Println("  sf project list|ls (-project_id <id> -name <n> -description <d>)  List projects")
 	fmt.Println("  sf project get -project_id <id>   Get project details")
 	fmt.Println("  sf project create -project_id <id> -name <n>  Create new project")
 	fmt.Println("  sf project update -project_id <id> (-name <n> -description <d>)  Update project")
-	fmt.Println("  sf project delete -project_id <id>  Delete project")
+	fmt.Println("  sf project delete|rm -project_id <id>  Delete project")
 	fmt.Println("  sf project set <name>             Set active project")
 	fmt.Println("  sf project unset                  Unset active project")
 	fmt.Println()
 	fmt.Println("Tasks:")
-	fmt.Println("  sf task list (-project_id <p> -status <s> -type <t> -owner <o>)  List tasks")
+	fmt.Println("  sf task list|ls (-project_id <p> -status <s> -type <t> -owner <o>)  List tasks")
 	fmt.Println("  sf task get -task_id <id>         Get task details")
 	fmt.Println("  sf task create -title <t>         Create new task")
 	fmt.Println("  sf task update -task_id <id> ...  Update task")
-	fmt.Println("  sf task delete -task_id <id>      Delete task")
+	fmt.Println("  sf task delete|rm -task_id <id>   Delete task")
 	fmt.Println("  sf task assign -task_id <id> -worker_id <w> -role <r>  Assign task")
 	fmt.Println("  sf task unassign -task_id <id> -worker_id <w>  Unassign task")
 	fmt.Println("  sf task request                   Request a task to work on")
@@ -1997,10 +1998,12 @@ func printCLIUsage() {
 	fmt.Println("  sf task history -task_id <id>     Show task history")
 	fmt.Println()
 	fmt.Println("Users:")
-	fmt.Println("  sf user list                      List all users")
+	fmt.Println("  sf user list|ls                   List all users")
+	fmt.Println("  sf user get -user_id <id>         Get user details")
 	fmt.Println("  sf user create -username <u> -password <p>  Create user")
 	fmt.Println("  sf user enable -username <u>      Enable user")
 	fmt.Println("  sf user disable -username <u>     Disable user")
+	fmt.Println("  sf user delete|rm -username <u>   Soft-delete user (disable)")
 	fmt.Println("  sf user reset-password -username <u> -password <p>  Reset user password")
 	fmt.Println()
 	fmt.Println("Workers:")
@@ -2011,21 +2014,22 @@ func printCLIUsage() {
 	fmt.Println("  sf worker reset-password -worker_id <id>  Reset worker password")
 	fmt.Println()
 	fmt.Println("Roles:")
-	fmt.Println("  sf role list                      List all roles")
+	fmt.Println("  sf role list|ls                   List all roles")
 	fmt.Println("  sf role get -role_id <id>         Get role details")
 	fmt.Println("  sf role create -title <t> -description <d> -goals <g>  Create role")
 	fmt.Println("  sf role update -role_id <id> (-title <t> -description <d> -goals <g>)  Update role")
+	fmt.Println("  sf role delete|rm -role_id <id>   Delete role")
 	fmt.Println("  sf role history -role_id <id>     Show role history")
 	fmt.Println()
 	fmt.Println("Config:")
-	fmt.Println("  sf config list                    List all config")
+	fmt.Println("  sf config list|ls                 List all config")
 	fmt.Println("  sf config set -key K -val V       Set config value")
-	fmt.Println("  sf config delete -key K           Delete config value")
+	fmt.Println("  sf config delete|rm -key K        Delete config value")
 	fmt.Println()
 	fmt.Println()
-	fmt.Println("  sf config list               List all config")
+	fmt.Println("  sf config list|ls            List all config")
 	fmt.Println("  sf config set -key K -val V  Set config value")
-	fmt.Println("  sf config delete -key K      Delete config value")
+	fmt.Println("  sf config delete|rm -key K   Delete config value")
 	fmt.Println()
 	fmt.Println("Beads:")
 	fmt.Println("  sf beads                         List beads (aliases: sf bead, sf bd)")
@@ -2597,6 +2601,24 @@ func handleUserCommand(client *cli.Client, config *cli.Config, args []string) {
 				fmt.Println()
 			}
 		}
+	case "get":
+		userID := extractFlag(args, "-user_id")
+		if userID == "" {
+			userID = extractFlag(args, "-username")
+		}
+		if userID == "" && len(args) > 1 {
+			userID = args[1]
+		}
+		if userID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -user_id flag required")
+			os.Exit(1)
+		}
+		data, err := client.Request("GET", "/api/v1/users/"+userID, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(string(data))
 	case "create":
 		username := extractFlag(args, "-username")
 		if username == "" {
@@ -2666,6 +2688,25 @@ func handleUserCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Printf("User '%s' disabled\n", username)
+	case "delete", "rm":
+		// There is no hard-delete user endpoint; treat delete/rm as soft-delete (disable).
+		username := extractFlag(args, "-username")
+		if username == "" {
+			username = extractFlag(args, "-u")
+		}
+		if username == "" && len(args) > 1 {
+			username = args[1]
+		}
+		if username == "" {
+			fmt.Fprintln(os.Stderr, "Error: username required")
+			os.Exit(1)
+		}
+		_, err := client.Request("POST", "/api/v1/users/"+username+"/disable", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("User '%s' soft-deleted (disabled)\n", username)
 	case "reset-password":
 		username := extractFlag(args, "-username")
 		if username == "" {
@@ -2677,8 +2718,8 @@ func handleUserCommand(client *cli.Client, config *cli.Config, args []string) {
 			fmt.Fprintln(os.Stderr, "Error: -password flag required")
 			os.Exit(1)
 		}
-		body := map[string]string{"username": username, "new_password": newPassword}
-		_, err := client.Request("POST", "/api/v1/users/reset-password", body)
+		body := map[string]string{"new_password": newPassword}
+		_, err := client.Request("POST", "/api/v1/users/"+username+"/reset-password", body)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -2835,9 +2876,9 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 			}
 		}
 	case "get":
-		id := extractFlag(args, "-task_id")
+		id := extractFlag(args, "-role_id")
 		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			fmt.Fprintln(os.Stderr, "Error: -role_id flag required")
 			os.Exit(1)
 		}
 		data, err := client.Request("GET", "/api/v1/roles/"+id, nil)
@@ -2893,6 +2934,21 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 		}
 		fmt.Println("Role updated:")
 		fmt.Println(string(data))
+	case "delete", "rm":
+		roleID := extractFlag(args, "-role_id")
+		if roleID == "" && len(args) > 1 {
+			roleID = args[1]
+		}
+		if roleID == "" {
+			fmt.Fprintln(os.Stderr, "Error: -role_id flag required")
+			os.Exit(1)
+		}
+		_, err := client.Request("DELETE", "/api/v1/roles/"+roleID, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Role deleted")
 	case "history":
 		roleID := extractFlag(args, "-role_id")
 		if roleID == "" {
