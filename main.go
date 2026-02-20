@@ -1888,10 +1888,21 @@ func runCLI(args []string) {
 	command := args[0]
 	subArgs := filterNonFlags(args[1:])
 
+	// Parse config from all remaining args
+	config, err := cli.NewConfig(args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Consistent no-arg UX for command groups: show command help/subcommands.
 	if len(subArgs) == 0 {
 		switch command {
-		case "project", "task", "user", "worker", "role", "config", "beads", "bead", "bd":
+		case "project":
+			showCommandHelp(command)
+			printCurrentDefaultProject(config)
+			return
+		case "task", "user", "worker", "role", "config", "beads", "bead", "bd":
 			showCommandHelp(command)
 			return
 		}
@@ -1903,13 +1914,6 @@ func runCLI(args []string) {
 			showCommandHelp(command)
 			return
 		}
-	}
-
-	// Parse config from all remaining args
-	config, err := cli.NewConfig(args[1:])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
 	}
 
 	// Login, register, logout and local beads commands don't require prior authentication
@@ -1960,6 +1964,14 @@ func runCLI(args []string) {
 		printCLIUsage()
 		os.Exit(1)
 	}
+}
+
+func printCurrentDefaultProject(config *cli.Config) {
+	current := config.ProjectID
+	if strings.TrimSpace(current) == "" {
+		current = "default"
+	}
+	fmt.Printf("\nCurrent default project: %s\n", current)
 }
 
 func filterNonFlags(args []string) []string {
