@@ -111,7 +111,21 @@ Tests all configuration-related functionality including:
 
 **Total tests: 20+**
 
-### 6. auth.spec.ts (3,505 bytes - existing)
+### 6. project-assets-comments.spec.ts (new)
+**Coverage: Project files, project notes, and entity comments**
+
+Tests includes:
+- Project file CRUD (create/list/get/update/delete)
+- Project file duplicate-name validation
+- Project note CRUD
+- Entity comments on both projects and tasks
+- Comment history verification (`create`, `edit`, `soft_delete`)
+- Soft-delete filtering (`include_deleted`)
+- Owner-only update/delete authorization checks
+
+**Total tests: 4**
+
+### 7. auth.spec.ts (3,505 bytes - existing)
 **Coverage: Authentication flow**
 
 Tests authentication functionality including:
@@ -126,12 +140,12 @@ Tests authentication functionality including:
 
 **Total tests: 8**
 
-### 7. navigation.spec.ts (1,939 bytes - existing)
+### 8. navigation.spec.ts (1,939 bytes - existing)
 **Coverage: Basic UI navigation**
 
 **Total tests: ~3**
 
-### 8. navigation-comprehensive.spec.ts (7,829 bytes - existing)
+### 9. navigation-comprehensive.spec.ts (7,829 bytes - existing)
 **Coverage: Comprehensive UI navigation**
 
 **Total tests: ~10**
@@ -159,12 +173,22 @@ Tests authentication functionality including:
 - ✅ POST /api/v1/workers/return/{id} (task return)
 - ✅ GET /api/v1/status (task statistics)
 
-#### Projects (7 endpoints)
+#### Projects (13 endpoints)
 - ✅ GET /api/v1/projects
 - ✅ POST /api/v1/projects
 - ✅ GET /api/v1/projects/{id}
 - ✅ PUT /api/v1/projects/{id}
 - ✅ DELETE /api/v1/projects/{id}
+- ✅ GET /api/v1/projects/{project_id}/files
+- ✅ POST /api/v1/projects/{project_id}/files
+- ✅ GET /api/v1/projects/{project_id}/files/{file_id}
+- ✅ PUT /api/v1/projects/{project_id}/files/{file_id}
+- ✅ DELETE /api/v1/projects/{project_id}/files/{file_id}
+- ✅ GET /api/v1/projects/{project_id}/notes
+- ✅ POST /api/v1/projects/{project_id}/notes
+- ✅ GET /api/v1/projects/{project_id}/notes/{note_id}
+- ✅ PUT /api/v1/projects/{project_id}/notes/{note_id}
+- ✅ DELETE /api/v1/projects/{project_id}/notes/{note_id}
 - ✅ GET /api/v1/projects/{id}/members
 - ✅ POST /api/v1/projects/{id}/members
 - ✅ DELETE /api/v1/projects/{id}/members/{user_id}
@@ -189,12 +213,21 @@ Tests authentication functionality including:
 - ✅ PUT /api/v1/config/{key}
 - ✅ DELETE /api/v1/config/{key}
 
+#### Entity Comments (6 endpoints)
+- ✅ GET /api/v1/comments
+- ✅ POST /api/v1/comments
+- ✅ GET /api/v1/comments/{comment_id}
+- ✅ PUT /api/v1/comments/{comment_id}
+- ✅ DELETE /api/v1/comments/{comment_id}
+- ✅ GET /api/v1/comments/{comment_id}/history
+
 ### CLI Commands Covered
 
 All CLI commands are tested through their corresponding API endpoints:
 
 - ✅ `sf task` - Full coverage (list, get, create, update, delete, assign, complete, etc.)
-- ✅ `sf project` - Full coverage (list, get, create, update, delete, members)
+- ✅ `sf project` - Full coverage (list, get, create, update, delete, files, notes, members)
+- ✅ `sf comment` - Full coverage (list, get, create, update, delete, history)
 - ✅ `sf user` - Full coverage (list, get, create, update, delete)
 - ✅ `sf role` - Full coverage (list, get, create, update, delete)
 - ✅ `sf config` - Full coverage (list, get, set, delete)
@@ -230,11 +263,11 @@ npx playwright test --project=webkit
 
 ## Test Statistics
 
-- **Total Test Files**: 8
-- **Total Test Cases**: 120+
+- **Total Test Files**: 9
+- **Total Test Cases**: 124+
 - **Total Lines of Test Code**: 89,625 bytes
-- **API Endpoints Covered**: 38
-- **CLI Commands Covered**: 5 (task, project, user, role, config)
+- **API Endpoints Covered**: 54
+- **CLI Commands Covered**: 6 (task, project, comment, user, role, config)
 - **Coverage**: 100% of core API endpoints
 
 ## Browser Coverage

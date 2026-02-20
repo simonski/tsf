@@ -27,6 +27,19 @@ Run all Go tests (includes harness):
 go test ./...
 ```
 
+Run focused server tests for project file/note/comment features:
+
+```bash
+go test ./internal/server -run 'TestProjectFileAndNote|TestEntityComment' -v
+```
+
+Run Playwright E2E coverage for these features:
+
+```bash
+cd tests/e2e
+npx playwright test specs/project-assets-comments.spec.ts
+```
+
 ## Scenario Format
 
 Scenarios are markdown/plaintext blocks delimited by 80 dashes:

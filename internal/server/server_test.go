@@ -430,6 +430,91 @@ func TestProjectFileAndNoteCRUD(t *testing.T) {
 	}
 }
 
+func TestProjectFileAndNoteValidation(t *testing.T) {
+	s, cleanup := testServer(t)
+	defer cleanup()
+
+	// Missing file name
+	rr := doRequest(t, s, "POST", "/api/v1/projects/project-1/files", map[string]string{
+		"content": "x",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("Expected 400 for missing file name, got %d", rr.Code)
+	}
+
+	// Unknown project
+	rr = doRequest(t, s, "POST", "/api/v1/projects/nope/files", map[string]string{
+		"name": "x",
+	})
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 for unknown project file create, got %d", rr.Code)
+	}
+
+	// Create file then duplicate by name in same project
+	rr = doRequest(t, s, "POST", "/api/v1/projects/project-1/files", map[string]string{
+		"name":    "dup.txt",
+		"content": "a",
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("Expected 201 for create file, got %d", rr.Code)
+	}
+	rr = doRequest(t, s, "POST", "/api/v1/projects/project-1/files", map[string]string{
+		"name":    "dup.txt",
+		"content": "b",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("Expected 400 for duplicate file name, got %d", rr.Code)
+	}
+
+	// Get/Update/Delete unknown file IDs
+	rr = doRequest(t, s, "GET", "/api/v1/projects/project-1/files/missing", nil)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 for missing file get, got %d", rr.Code)
+	}
+	rr = doRequest(t, s, "PUT", "/api/v1/projects/project-1/files/missing", map[string]string{
+		"content": "x",
+	})
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 for missing file update, got %d", rr.Code)
+	}
+	rr = doRequest(t, s, "DELETE", "/api/v1/projects/project-1/files/missing", nil)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 for missing file delete, got %d", rr.Code)
+	}
+
+	// Missing note title
+	rr = doRequest(t, s, "POST", "/api/v1/projects/project-1/notes", map[string]string{
+		"content": "x",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("Expected 400 for missing note title, got %d", rr.Code)
+	}
+
+	// Unknown project note create
+	rr = doRequest(t, s, "POST", "/api/v1/projects/nope/notes", map[string]string{
+		"title": "x",
+	})
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 for unknown project note create, got %d", rr.Code)
+	}
+
+	// Get/Update/Delete unknown note IDs
+	rr = doRequest(t, s, "GET", "/api/v1/projects/project-1/notes/missing", nil)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 for missing note get, got %d", rr.Code)
+	}
+	rr = doRequest(t, s, "PUT", "/api/v1/projects/project-1/notes/missing", map[string]string{
+		"content": "x",
+	})
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 for missing note update, got %d", rr.Code)
+	}
+	rr = doRequest(t, s, "DELETE", "/api/v1/projects/project-1/notes/missing", nil)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 for missing note delete, got %d", rr.Code)
+	}
+}
+
 func TestEntityCommentCRUDHistoryAndOwnership(t *testing.T) {
 	s, cleanup := testServer(t)
 	defer cleanup()
@@ -525,6 +610,79 @@ func TestEntityCommentCRUDHistoryAndOwnership(t *testing.T) {
 	parseJSON(t, rr, &comments)
 	if len(comments) != 1 {
 		t.Fatalf("Expected 1 comment with include_deleted, got %d", len(comments))
+	}
+}
+
+func TestEntityCommentProjectAndValidation(t *testing.T) {
+	s, cleanup := testServer(t)
+	defer cleanup()
+
+	// Create comment on project
+	rr := doRequest(t, s, "POST", "/api/v1/comments", map[string]string{
+		"entity_type": "project",
+		"entity_id":   "project-1",
+		"text":        "project-level comment",
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("Expected 201 for project comment create, got %d, body: %s", rr.Code, rr.Body.String())
+	}
+	var comment map[string]interface{}
+	parseJSON(t, rr, &comment)
+	commentID := comment["id"].(string)
+
+	// List project comments
+	rr = doRequest(t, s, "GET", "/api/v1/comments?entity_type=project&entity_id=project-1", nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Expected 200 for project comments list, got %d", rr.Code)
+	}
+	var comments []map[string]interface{}
+	parseJSON(t, rr, &comments)
+	if len(comments) != 1 {
+		t.Fatalf("Expected 1 project comment, got %d", len(comments))
+	}
+
+	// Delete and verify include_deleted filter
+	rr = doRequest(t, s, "DELETE", "/api/v1/comments/"+commentID, nil)
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("Expected 204 for comment soft-delete, got %d", rr.Code)
+	}
+	rr = doRequest(t, s, "GET", "/api/v1/comments?entity_type=project&entity_id=project-1", nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Expected 200 for project comments list post-delete, got %d", rr.Code)
+	}
+	parseJSON(t, rr, &comments)
+	if len(comments) != 0 {
+		t.Fatalf("Expected 0 non-deleted comments, got %d", len(comments))
+	}
+	rr = doRequest(t, s, "GET", "/api/v1/comments?entity_type=project&entity_id=project-1&include_deleted=true", nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Expected 200 for include_deleted list, got %d", rr.Code)
+	}
+	parseJSON(t, rr, &comments)
+	if len(comments) != 1 {
+		t.Fatalf("Expected 1 deleted comment with include_deleted=true, got %d", len(comments))
+	}
+
+	// Validation / unknown entity cases
+	rr = doRequest(t, s, "POST", "/api/v1/comments", map[string]string{
+		"entity_type": "invalid",
+		"entity_id":   "x",
+		"text":        "x",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("Expected 400 invalid entity_type, got %d", rr.Code)
+	}
+	rr = doRequest(t, s, "POST", "/api/v1/comments", map[string]string{
+		"entity_type": "task",
+		"entity_id":   "missing-task",
+		"text":        "x",
+	})
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 missing entity, got %d", rr.Code)
+	}
+	rr = doRequest(t, s, "GET", "/api/v1/comments?entity_type=task&entity_id=missing-task", nil)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 listing comments for missing entity, got %d", rr.Code)
 	}
 }
 

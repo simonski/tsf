@@ -12,7 +12,8 @@ Complete guide to using sf.
 6. [Managing Projects](#managing-projects)
 7. [Managing Tasks](#managing-tasks)
 8. [Roles and Workers](#roles-and-workers)
-9. [Configuration](#configuration)
+9. [Comments](#comments)
+10. [Configuration](#configuration)
 
 ## Getting Started
 
@@ -390,6 +391,26 @@ ID                                   | Name          | Description
 ./sf project delete -id <project-id>
 ```
 
+#### Project Files and Notes
+
+Project files and notes are project-scoped artifacts managed from the CLI.
+
+```bash
+# files
+./sf project file list -project_id <project-id>
+./sf project file create "README.md" -project_id <project-id> -content "# Intro"
+./sf project file get <file-id> -project_id <project-id>
+./sf project file update <file-id> -project_id <project-id> -content "# Updated"
+./sf project file rm <file-id> -project_id <project-id>
+
+# notes
+./sf project note list -project_id <project-id>
+./sf project note create "Kickoff" -project_id <project-id> -content "Initial decisions"
+./sf project note get <note-id> -project_id <project-id>
+./sf project note update <note-id> -project_id <project-id> -content "Revised decisions"
+./sf project note rm <note-id> -project_id <project-id>
+```
+
 ### Task Management
 
 #### List Tasks
@@ -756,6 +777,33 @@ The orchestrator:
 - Routes tasks to appropriate workers
 - Manages task lifecycle
 - Loads configuration dynamically
+
+## Comments
+
+`sf comment` provides social-style comments for both projects and tasks.
+
+Each comment stores:
+- owner
+- timestamps
+- entity attachment (`project` or `task`)
+- edit history
+- soft-delete status
+
+```bash
+# project comments
+./sf comment list -project_id <project-id>
+./sf comment create -project_id <project-id> -text "Looks good"
+
+# task comments
+./sf comment list -task_id <task-id>
+./sf comment create -task_id <task-id> -text "Needs test coverage"
+
+# comment lifecycle
+./sf comment get <comment-id>
+./sf comment update <comment-id> -text "Updated text"
+./sf comment history <comment-id>
+./sf comment rm <comment-id>   # soft delete
+```
 
 ## Configuration
 

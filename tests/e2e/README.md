@@ -55,7 +55,8 @@ tests/e2e/
 ├── specs/                 # Test specifications
 │   ├── auth.spec.ts      # Authentication tests
 │   ├── navigation.spec.ts # Navigation and menu tests
-│   └── projects.spec.ts   # Project management tests
+│   ├── projects.spec.ts   # Project management tests
+│   └── project-assets-comments.spec.ts # Project files/notes and comment tests
 ├── test-results/         # Test execution results (gitignored)
 └── playwright-report/    # HTML test reports (gitignored)
 ```
@@ -78,6 +79,13 @@ tests/e2e/
 - Project selector
 - Project switching
 - Board display
+
+### Project Assets + Comments (`project-assets-comments.spec.ts`)
+- Project file CRUD and duplicate-name validation
+- Project note CRUD
+- Entity comment lifecycle for project/task
+- Comment history and soft-delete behavior
+- Owner-only edit/delete authorization
 
 ## Configuration
 
