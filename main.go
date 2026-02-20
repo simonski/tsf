@@ -2811,8 +2811,11 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		}
 	case "get":
 		id := extractFlag(args, "-task_id")
+		if id == "" && len(args) > 1 {
+			id = args[1]
+		}
 		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
 		}
 		data, err := client.Request("GET", "/api/v1/tasks/"+id, nil)
@@ -2867,8 +2870,11 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		printResponseData(data, config)
 	case "update":
 		id := extractFlag(args, "-task_id")
+		if id == "" && len(args) > 1 {
+			id = args[1]
+		}
 		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
 		}
 		body := map[string]interface{}{}
@@ -2904,8 +2910,11 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		printResponseData(data, config)
 	case "delete", "rm":
 		id := extractFlag(args, "-task_id")
+		if id == "" && len(args) > 1 {
+			id = args[1]
+		}
 		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
 		}
 		_, err := client.Request("DELETE", "/api/v1/tasks/"+id, nil)
@@ -2916,6 +2925,9 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		fmt.Println("Task deleted")
 	case "assign":
 		id := extractFlag(args, "-task_id")
+		if id == "" && len(args) > 1 {
+			id = args[1]
+		}
 		if id == "" {
 			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
@@ -2942,6 +2954,9 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		printResponseData(data, config)
 	case "unassign":
 		id := extractFlag(args, "-task_id")
+		if id == "" && len(args) > 1 {
+			id = args[1]
+		}
 		if id == "" {
 			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
@@ -2987,6 +3002,9 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		}
 	case "return":
 		id := extractFlag(args, "-task_id")
+		if id == "" && len(args) > 1 {
+			id = args[1]
+		}
 		if id == "" {
 			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
@@ -3011,6 +3029,9 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		printResponseData(data, config)
 	case "comment":
 		id := extractFlag(args, "-task_id")
+		if id == "" && len(args) > 1 {
+			id = args[1]
+		}
 		if id == "" {
 			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
@@ -3030,6 +3051,9 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		printResponseData(data, config)
 	case "history":
 		id := extractFlag(args, "-task_id")
+		if id == "" && len(args) > 1 {
+			id = args[1]
+		}
 		if id == "" {
 			fmt.Fprintln(os.Stderr, "Error: -task_id flag required")
 			os.Exit(1)
