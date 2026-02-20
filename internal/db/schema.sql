@@ -76,6 +76,42 @@ CREATE INDEX idx_project_notes_project ON project_notes(project_id);
 CREATE INDEX idx_project_notes_title ON project_notes(title);
 CREATE INDEX idx_project_notes_created_by ON project_notes(created_by);
 
+-- Entity comments: social discussion attached to projects or tasks
+CREATE TABLE IF NOT EXISTS comments (
+    id TEXT PRIMARY KEY,
+    entity_type TEXT NOT NULL CHECK(entity_type IN ('project', 'task')),
+    entity_id TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    owner_username TEXT NOT NULL,
+    text TEXT NOT NULL,
+    is_deleted INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT,
+    FOREIGN KEY (owner_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_comments_entity ON comments(entity_type, entity_id);
+CREATE INDEX idx_comments_owner ON comments(owner_id);
+CREATE INDEX idx_comments_is_deleted ON comments(is_deleted);
+CREATE INDEX idx_comments_created_at ON comments(created_at);
+
+-- Entity comment history: immutable change log for edits/deletes
+CREATE TABLE IF NOT EXISTS comment_history (
+    id TEXT PRIMARY KEY,
+    comment_id TEXT NOT NULL,
+    editor_id TEXT NOT NULL,
+    editor_username TEXT NOT NULL,
+    action TEXT NOT NULL CHECK(action IN ('create', 'edit', 'soft_delete')),
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+    FOREIGN KEY (editor_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_comment_history_comment ON comment_history(comment_id);
+CREATE INDEX idx_comment_history_created_at ON comment_history(created_at);
+
 -- Project members: many-to-many relationship between projects and users
 CREATE TABLE IF NOT EXISTS project_members (
     id TEXT PRIMARY KEY,
@@ -306,6 +342,13 @@ CREATE TRIGGER IF NOT EXISTS update_project_notes_timestamp
     FOR EACH ROW
     BEGIN
         UPDATE project_notes SET updated_at = datetime('now') WHERE id = NEW.id;
+    END;
+
+CREATE TRIGGER IF NOT EXISTS update_comments_timestamp
+    AFTER UPDATE ON comments
+    FOR EACH ROW
+    BEGIN
+        UPDATE comments SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_roles_timestamp 

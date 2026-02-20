@@ -132,6 +132,14 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("POST /api/v1/tasks/request", s.withAuth(s.handleTaskRequest))
 	mux.HandleFunc("POST /api/v1/tasks/{task_id}/return", s.withAuth(s.handleTaskReturn))
 
+	// Entity comments endpoints (project/task social comments with history)
+	mux.HandleFunc("GET /api/v1/comments", s.withAuth(s.handleListComments))
+	mux.HandleFunc("POST /api/v1/comments", s.withAuth(s.handleCreateComment))
+	mux.HandleFunc("GET /api/v1/comments/{comment_id}", s.withAuth(s.handleGetComment))
+	mux.HandleFunc("PUT /api/v1/comments/{comment_id}", s.withAuth(s.handleUpdateComment))
+	mux.HandleFunc("DELETE /api/v1/comments/{comment_id}", s.withAuth(s.handleDeleteComment))
+	mux.HandleFunc("GET /api/v1/comments/{comment_id}/history", s.withAuth(s.handleGetCommentHistory))
+
 	// Status endpoint
 	mux.HandleFunc("GET /api/v1/status", s.withAuth(s.handleStatus))
 

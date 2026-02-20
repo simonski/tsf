@@ -179,3 +179,28 @@ type Comment struct {
 	Author    string `json:"author"`
 	Timestamp string `json:"timestamp"`
 }
+
+// EntityComment is a comment attached to a project or task
+type EntityComment struct {
+	ID            string     `json:"id"`
+	EntityType    string     `json:"entity_type"` // project, task
+	EntityID      string     `json:"entity_id"`
+	OwnerID       string     `json:"owner_id"`
+	OwnerUsername string     `json:"owner_username"`
+	Text          string     `json:"text"`
+	IsDeleted     bool       `json:"is_deleted"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+	DeletedAt     *time.Time `json:"deleted_at,omitempty"`
+}
+
+// EntityCommentHistory tracks create/edit/delete changes for a comment
+type EntityCommentHistory struct {
+	ID             string    `json:"id"`
+	CommentID      string    `json:"comment_id"`
+	EditorID       string    `json:"editor_id"`
+	EditorUsername string    `json:"editor_username"`
+	Action         string    `json:"action"` // create, edit, soft_delete
+	Text           string    `json:"text"`
+	CreatedAt      time.Time `json:"created_at"`
+}

@@ -68,6 +68,11 @@ func testServer(t *testing.T) (*Server, func()) {
 // doRequest performs an HTTP request against the test server
 func doRequest(t *testing.T, s *Server, method, path string, body interface{}) *httptest.ResponseRecorder {
 	t.Helper()
+	return doRequestAs(t, s, method, path, body, "admin", "admin123")
+}
+
+func doRequestAs(t *testing.T, s *Server, method, path string, body interface{}, username, password string) *httptest.ResponseRecorder {
+	t.Helper()
 
 	var bodyReader io.Reader
 	if body != nil {
@@ -79,7 +84,7 @@ func doRequest(t *testing.T, s *Server, method, path string, body interface{}) *
 	}
 
 	req := httptest.NewRequest(method, path, bodyReader)
-	req.SetBasicAuth("admin", "admin123")
+	req.SetBasicAuth(username, password)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -422,6 +427,104 @@ func TestProjectFileAndNoteCRUD(t *testing.T) {
 	rr = doRequest(t, s, "DELETE", "/api/v1/projects/project-1/notes/"+noteID, nil)
 	if rr.Code != http.StatusNoContent {
 		t.Fatalf("Delete project note failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestEntityCommentCRUDHistoryAndOwnership(t *testing.T) {
+	s, cleanup := testServer(t)
+	defer cleanup()
+
+	// Create a task to comment on
+	rr := doRequest(t, s, "POST", "/api/v1/tasks", map[string]interface{}{
+		"project_id":  "project-1",
+		"title":       "Commented task",
+		"description": "Task for comment tests",
+		"type":        "task",
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("Create task failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+	var task map[string]interface{}
+	parseJSON(t, rr, &task)
+	taskID := task["id"].(string)
+
+	// Create comment on task
+	rr = doRequest(t, s, "POST", "/api/v1/comments", map[string]string{
+		"entity_type": "task",
+		"entity_id":   taskID,
+		"text":        "first",
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("Create comment failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+	var comment map[string]interface{}
+	parseJSON(t, rr, &comment)
+	commentID := comment["id"].(string)
+
+	// Update as owner
+	rr = doRequest(t, s, "PUT", "/api/v1/comments/"+commentID, map[string]string{
+		"text": "edited",
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Update comment failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	// History should have create+edit
+	rr = doRequest(t, s, "GET", "/api/v1/comments/"+commentID+"/history", nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Get comment history failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+	var history []map[string]interface{}
+	parseJSON(t, rr, &history)
+	if len(history) != 2 {
+		t.Fatalf("Expected 2 history entries, got %d", len(history))
+	}
+
+	// Add a second user and verify non-owner cannot edit/delete
+	userHash, _ := db.HashPassword("user123")
+	_, err := s.db.Conn().Exec(`
+		INSERT INTO users (id, username, password_hash, type, is_active)
+		VALUES ('user-2', 'user2', ?, 'human', 1)
+	`, userHash)
+	if err != nil {
+		t.Fatalf("Failed to create second user: %v", err)
+	}
+	rr = doRequestAs(t, s, "PUT", "/api/v1/comments/"+commentID, map[string]string{
+		"text": "hijack",
+	}, "user2", "user123")
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("Expected 403 for non-owner edit, got %d, body: %s", rr.Code, rr.Body.String())
+	}
+	rr = doRequestAs(t, s, "DELETE", "/api/v1/comments/"+commentID, nil, "user2", "user123")
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("Expected 403 for non-owner delete, got %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	// Soft-delete as owner
+	rr = doRequest(t, s, "DELETE", "/api/v1/comments/"+commentID, nil)
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("Delete comment failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	// Default list excludes deleted
+	rr = doRequest(t, s, "GET", "/api/v1/comments?entity_type=task&entity_id="+taskID, nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("List comments failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+	var comments []map[string]interface{}
+	parseJSON(t, rr, &comments)
+	if len(comments) != 0 {
+		t.Fatalf("Expected 0 non-deleted comments, got %d", len(comments))
+	}
+
+	// Include deleted returns the comment
+	rr = doRequest(t, s, "GET", "/api/v1/comments?entity_type=task&entity_id="+taskID+"&include_deleted=true", nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("List comments (include_deleted) failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+	parseJSON(t, rr, &comments)
+	if len(comments) != 1 {
+		t.Fatalf("Expected 1 comment with include_deleted, got %d", len(comments))
 	}
 }
 

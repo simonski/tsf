@@ -57,7 +57,7 @@ func main() {
 		runInitDB(os.Args[2:])
 	case "tui", "-tui":
 		runTUI(os.Args[2:])
-	case "login", "register", "logout", "project", "task", "epic", "bug", "chore", "user", "role", "config", "status", "bd", "bead", "beads":
+	case "login", "register", "logout", "project", "task", "epic", "bug", "chore", "comment", "user", "role", "config", "status", "bd", "bead", "beads":
 		runCLI(os.Args[1:])
 	case "version", "-v", "--version":
 		fmt.Println(strings.TrimSpace(version))
@@ -96,6 +96,7 @@ func printUsage() {
 	fmt.Println("  epic          Manage epics (task alias with implied -type epic)")
 	fmt.Println("  bug           Manage bugs (task alias with implied -type bug)")
 	fmt.Println("  chore         Manage chores (task alias with implied -type chore)")
+	fmt.Println("  comment       Manage comments on projects and tasks")
 	fmt.Println("  user          Manage users")
 	fmt.Println("  role          Manage roles")
 	fmt.Println("  config        Manage configuration")
@@ -134,6 +135,8 @@ func showCommandHelp(command string) {
 		printTaskHelp()
 	case "user":
 		printUserHelp()
+	case "comment":
+		printCommentHelp()
 	case "role":
 		printRoleHelp()
 	case "config":
@@ -1250,6 +1253,45 @@ func printTaskHelp() {
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 }
 
+func printCommentHelp() {
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println("  SF COMMENT - Social Comments")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println()
+	fmt.Println("DESCRIPTION")
+	fmt.Println("  Create and manage comments attached to projects or tasks.")
+	fmt.Println("  Comments track owner, timestamps, edit history, and soft-delete state.")
+	fmt.Println()
+	fmt.Println("USAGE")
+	fmt.Println("  sf comment <subcommand> [options]")
+	fmt.Println()
+	fmt.Println("SUBCOMMANDS")
+	fmt.Println("  list|ls               List comments for an entity")
+	fmt.Println("  get <comment_id>      Get comment details")
+	fmt.Println("  create                Create a comment")
+	fmt.Println("  update <comment_id>   Edit your own comment")
+	fmt.Println("  delete|rm <comment_id> Soft-delete your own comment")
+	fmt.Println("  history <comment_id>  Show comment edit/delete history")
+	fmt.Println()
+	fmt.Println("TARGET OPTIONS")
+	fmt.Println("  -project_id <id>      Target a project comment thread")
+	fmt.Println("  -task_id <id>         Target a task comment thread")
+	fmt.Println("  -entity_type <type>   project|task (alternative)")
+	fmt.Println("  -entity_id <id>       Entity ID (alternative)")
+	fmt.Println()
+	fmt.Println("COMMENT OPTIONS")
+	fmt.Println("  -text <text>          Comment text")
+	fmt.Println("  -include_deleted      Include soft-deleted comments in list")
+	fmt.Println()
+	fmt.Println("EXAMPLES")
+	fmt.Println("  $ sf comment list -project_id proj_abc123")
+	fmt.Println("  $ sf comment create -task_id task_xyz -text \"Looks good\"")
+	fmt.Println("  $ sf comment update cmt_123 -text \"Updated note\"")
+	fmt.Println("  $ sf comment history cmt_123")
+	fmt.Println()
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+}
+
 func printUserHelp() {
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println("  SF USER - User Management")
@@ -1953,7 +1995,7 @@ func runCLI(args []string) {
 			showCommandHelp(command)
 			printCurrentDefaultProject(config)
 			return
-		case "user", "worker", "role", "config", "beads", "bead", "bd":
+		case "comment", "user", "worker", "role", "config", "beads", "bead", "bd":
 			showCommandHelp(command)
 			return
 		}
@@ -2006,6 +2048,8 @@ func runCLI(args []string) {
 		handleTaskCommand(client, config, withImpliedTaskType(subArgs, "bug"))
 	case "chore":
 		handleTaskCommand(client, config, withImpliedTaskType(subArgs, "chore"))
+	case "comment":
+		handleCommentCommand(client, config, subArgs)
 	case "user":
 		handleUserCommand(client, config, subArgs)
 	case "worker":
@@ -2121,6 +2165,14 @@ func printCLIUsage() {
 	fmt.Println("  sf chore <task-subcommand>        Alias of sf task with implied -type chore")
 	fmt.Println("  sf chore create <title>           Create chore task")
 	fmt.Println("  sf chore list|ls                  List chore tasks")
+	fmt.Println()
+	fmt.Println("Comments:")
+	fmt.Println("  sf comment list|ls (-project_id <id> | -task_id <id>)")
+	fmt.Println("  sf comment get <comment_id>")
+	fmt.Println("  sf comment create (-project_id <id> | -task_id <id>) -text <text>")
+	fmt.Println("  sf comment update <comment_id> -text <text>")
+	fmt.Println("  sf comment delete|rm <comment_id>")
+	fmt.Println("  sf comment history <comment_id>")
 	fmt.Println()
 	fmt.Println("Users:")
 	fmt.Println("  sf user list|ls                   List all users")
@@ -2991,6 +3043,161 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		}
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown task subcommand: %s\n", subcommand)
+		os.Exit(1)
+	}
+}
+
+func resolveCommentEntity(args []string, config *cli.Config) (string, string) {
+	if projectID := extractFlag(args, "-project_id"); projectID != "" {
+		return "project", projectID
+	}
+	if taskID := extractFlag(args, "-task_id"); taskID != "" {
+		return "task", taskID
+	}
+	entityType := extractFlag(args, "-entity_type")
+	entityID := extractFlag(args, "-entity_id")
+	if entityType == "project" && entityID == "" {
+		if strings.TrimSpace(config.ProjectID) != "" {
+			entityID = config.ProjectID
+		} else {
+			entityID = "default"
+		}
+	}
+	return entityType, entityID
+}
+
+func handleCommentCommand(client *cli.Client, config *cli.Config, args []string) {
+	if len(args) == 0 {
+		printCommentHelp()
+		return
+	}
+
+	subcommand := args[0]
+	switch subcommand {
+	case "list", "ls":
+		entityType, entityID := resolveCommentEntity(args, config)
+		if entityType == "" || entityID == "" {
+			fmt.Fprintln(os.Stderr, "Error: target required (-project_id or -task_id)")
+			os.Exit(1)
+		}
+		path := "/api/v1/comments?entity_type=" + entityType + "&entity_id=" + entityID
+		if hasFlag(args, "-include_deleted") {
+			path += "&include_deleted=true"
+		}
+		data, err := client.Request("GET", path, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if config.JSON {
+			printResponseData(data, config)
+			return
+		}
+		var comments []map[string]interface{}
+		if err := parseJSON(data, &comments); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing response: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Found %d comments on %s %s:\n\n", len(comments), entityType, entityID)
+		for _, c := range comments {
+			fmt.Printf("ID:      %v\n", c["id"])
+			fmt.Printf("Owner:   %v\n", c["owner_username"])
+			fmt.Printf("Deleted: %v\n", c["is_deleted"])
+			fmt.Printf("Text:    %v\n", c["text"])
+			fmt.Println()
+		}
+	case "get":
+		commentID := extractFlag(args, "-comment_id")
+		if commentID == "" && len(args) > 1 {
+			commentID = args[1]
+		}
+		if commentID == "" {
+			fmt.Fprintln(os.Stderr, "Error: comment ID required")
+			os.Exit(1)
+		}
+		data, err := client.Request("GET", "/api/v1/comments/"+commentID, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		printResponseData(data, config)
+	case "create":
+		entityType, entityID := resolveCommentEntity(args, config)
+		if entityType == "" || entityID == "" {
+			fmt.Fprintln(os.Stderr, "Error: target required (-project_id or -task_id)")
+			os.Exit(1)
+		}
+		text := extractFlag(args, "-text")
+		if text == "" {
+			fmt.Fprintln(os.Stderr, "Error: -text flag required")
+			os.Exit(1)
+		}
+		body := map[string]string{
+			"entity_type": entityType,
+			"entity_id":   entityID,
+			"text":        text,
+		}
+		data, err := client.Request("POST", "/api/v1/comments", body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Comment created:")
+		printResponseData(data, config)
+	case "update":
+		commentID := extractFlag(args, "-comment_id")
+		if commentID == "" && len(args) > 1 {
+			commentID = args[1]
+		}
+		if commentID == "" {
+			fmt.Fprintln(os.Stderr, "Error: comment ID required")
+			os.Exit(1)
+		}
+		text := extractFlag(args, "-text")
+		if text == "" {
+			fmt.Fprintln(os.Stderr, "Error: -text flag required")
+			os.Exit(1)
+		}
+		body := map[string]string{"text": text}
+		data, err := client.Request("PUT", "/api/v1/comments/"+commentID, body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Comment updated:")
+		printResponseData(data, config)
+	case "delete", "rm":
+		commentID := extractFlag(args, "-comment_id")
+		if commentID == "" && len(args) > 1 {
+			commentID = args[1]
+		}
+		if commentID == "" {
+			fmt.Fprintln(os.Stderr, "Error: comment ID required")
+			os.Exit(1)
+		}
+		_, err := client.Request("DELETE", "/api/v1/comments/"+commentID, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Comment soft-deleted")
+	case "history":
+		commentID := extractFlag(args, "-comment_id")
+		if commentID == "" && len(args) > 1 {
+			commentID = args[1]
+		}
+		if commentID == "" {
+			fmt.Fprintln(os.Stderr, "Error: comment ID required")
+			os.Exit(1)
+		}
+		data, err := client.Request("GET", "/api/v1/comments/"+commentID+"/history", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		printResponseData(data, config)
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown comment subcommand: %s\n", subcommand)
 		os.Exit(1)
 	}
 }
