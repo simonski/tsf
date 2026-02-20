@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -107,8 +108,29 @@ func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ProjectID == "" || req.Title == "" || req.Type == "" {
-		sendError(w, http.StatusBadRequest, "project_id, title, and type are required")
+	if req.Title == "" || req.Type == "" {
+		sendError(w, http.StatusBadRequest, "title and type are required")
+		return
+	}
+
+	projectID, err := s.resolveTaskProjectID(req.ProjectID)
+	if err == sql.ErrNoRows {
+		sendError(w, http.StatusBadRequest, "project_id is required and no default project is configured")
+		return
+	}
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to resolve project_id")
+		return
+	}
+
+	var projectExists int
+	err = s.db.Conn().QueryRow("SELECT COUNT(*) FROM projects WHERE id = ?", projectID).Scan(&projectExists)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to query project")
+		return
+	}
+	if projectExists == 0 {
+		sendError(w, http.StatusNotFound, "project not found")
 		return
 	}
 
@@ -119,11 +141,11 @@ func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	labelsJSON, _ := json.Marshal(req.Labels)
 
 	taskID := uuid.New().String()
-	_, err := s.db.Conn().Exec(`
+	_, err = s.db.Conn().Exec(`
 		INSERT INTO tasks (id, project_id, title, type, description, acceptance_criteria, parent_id, epic_id,
 		                   depends_on_task_id, priority, created_by, updated_by, labels, estimated_effort)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, taskID, req.ProjectID, req.Title, req.Type, req.Description, req.AcceptanceCriteria, req.ParentID, req.EpicID,
+	`, taskID, projectID, req.Title, req.Type, req.Description, req.AcceptanceCriteria, req.ParentID, req.EpicID,
 		req.DependsOnTaskID, req.Priority, user.ID, user.ID, string(labelsJSON), req.EstimatedEffort)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "failed to create task")
@@ -137,6 +159,35 @@ func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendJSON(w, http.StatusCreated, task)
+}
+
+// resolveTaskProjectID resolves project aliases for task creation.
+// Supports literal "default" by resolving config.default_project_id first,
+// then falling back to project name "default".
+func (s *Server) resolveTaskProjectID(requested string) (string, error) {
+	projectID := strings.TrimSpace(requested)
+	if projectID != "" && projectID != "default" {
+		return projectID, nil
+	}
+
+	var cfgValue string
+	err := s.db.Conn().QueryRow("SELECT value FROM config WHERE key = 'default_project_id'").Scan(&cfgValue)
+	if err == nil && strings.TrimSpace(cfgValue) != "" {
+		return strings.TrimSpace(cfgValue), nil
+	}
+	if err != nil && err != sql.ErrNoRows {
+		return "", err
+	}
+
+	var defaultProjectID string
+	err = s.db.Conn().QueryRow("SELECT id FROM projects WHERE name = 'default' LIMIT 1").Scan(&defaultProjectID)
+	if err == nil {
+		return defaultProjectID, nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return "", sql.ErrNoRows
 }
 
 // handleGetTask returns a specific task

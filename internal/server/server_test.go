@@ -257,6 +257,51 @@ func TestTaskCRUD(t *testing.T) {
 	}
 }
 
+func TestCreateTaskWithDefaultProjectAlias(t *testing.T) {
+	s, cleanup := testServer(t)
+	defer cleanup()
+
+	// Create a project named "default" with non-literal ID to verify alias resolution.
+	_, err := s.db.Conn().Exec(`
+		INSERT INTO projects (id, name, description, status, created_by, updated_by)
+		VALUES ('project-default', 'default', 'default project', 'active', 'admin-id', 'admin-id')
+	`)
+	if err != nil {
+		t.Fatalf("Failed to create default project: %v", err)
+	}
+
+	rr := doRequest(t, s, "POST", "/api/v1/tasks", map[string]interface{}{
+		"project_id":  "default",
+		"title":       "Alias Task",
+		"description": "uses default alias",
+		"type":        "task",
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("Create task with default alias failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	var task map[string]interface{}
+	parseJSON(t, rr, &task)
+	if task["project_id"] != "project-default" {
+		t.Fatalf("Expected resolved project_id 'project-default', got %v", task["project_id"])
+	}
+}
+
+func TestCreateTaskUnknownProjectReturns404(t *testing.T) {
+	s, cleanup := testServer(t)
+	defer cleanup()
+
+	rr := doRequest(t, s, "POST", "/api/v1/tasks", map[string]interface{}{
+		"project_id":  "missing-project-id",
+		"title":       "Task",
+		"description": "unknown project",
+		"type":        "task",
+	})
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected 404 for unknown project, got %d, body: %s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestTaskWorkflow(t *testing.T) {
 	s, cleanup := testServer(t)
 	defer cleanup()

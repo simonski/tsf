@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 )
@@ -23,6 +24,9 @@ func sendJSON(w http.ResponseWriter, status int, data interface{}) {
 
 // sendError sends an error response
 func sendError(w http.ResponseWriter, status int, message string) {
+	if status >= 500 {
+		log.Printf("internal server error (%d): %s", status, message)
+	}
 	sendJSON(w, status, ErrorResponse{
 		Error: message,
 	})
