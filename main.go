@@ -57,7 +57,7 @@ func main() {
 		runInitDB(os.Args[2:])
 	case "tui", "-tui":
 		runTUI(os.Args[2:])
-	case "login", "register", "logout", "project", "task", "epic", "bug", "chore", "comment", "user", "role", "config", "status", "bd", "bead", "beads":
+	case "login", "register", "logout", "project", "task", "epic", "bug", "chore", "comment", "parse", "user", "role", "config", "status", "bd", "bead", "beads":
 		runCLI(os.Args[1:])
 	case "version", "-v", "--version":
 		fmt.Println(strings.TrimSpace(version))
@@ -97,6 +97,7 @@ func printUsage() {
 	fmt.Println("  bug           Manage bugs (task alias with implied -type bug)")
 	fmt.Println("  chore         Manage chores (task alias with implied -type chore)")
 	fmt.Println("  comment       Manage comments on projects and tasks")
+	fmt.Println("  parse         Parse markdown into sf create commands")
 	fmt.Println("  user          Manage users")
 	fmt.Println("  role          Manage roles")
 	fmt.Println("  config        Manage configuration")
@@ -137,6 +138,8 @@ func showCommandHelp(command string) {
 		printUserHelp()
 	case "comment":
 		printCommentHelp()
+	case "parse":
+		printParseHelp()
 	case "role":
 		printRoleHelp()
 	case "config":
@@ -1168,6 +1171,7 @@ func printTaskHelp() {
 	fmt.Println("  -type <type>          Task type (default: task)")
 	fmt.Println("  -description <text>   Task description (default: empty)")
 	fmt.Println("  -priority <level>     Priority (low|medium|high|critical)")
+	fmt.Println("  -labels <csv>         Comma-separated labels (e.g. api,backend)")
 	fmt.Println("  -acceptance <text>    Acceptance criteria")
 	fmt.Println("  -acceptance_criteria <text>  Acceptance criteria (alias)")
 	fmt.Println()
@@ -1272,6 +1276,34 @@ func printCommentHelp() {
 	fmt.Println("  $ sf comment create -task_id task_xyz -text \"Looks good\"")
 	fmt.Println("  $ sf comment update cmt_123 -text \"Updated note\"")
 	fmt.Println("  $ sf comment history cmt_123")
+	fmt.Println()
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+}
+
+func printParseHelp() {
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println("  SF PARSE - Markdown Entity Parser")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println()
+	fmt.Println("USAGE")
+	fmt.Println("  sf parse -f <filename.md>")
+	fmt.Println()
+	fmt.Println("DESCRIPTION")
+	fmt.Println("  Parses a markdown/plain text file line-by-line into entity blocks and")
+	fmt.Println("  prints equivalent sf create commands.")
+	fmt.Println()
+	fmt.Println("ENTITY KEYS")
+	fmt.Println("  project:, epic:, task:, feature:, bug:, chore:")
+	fmt.Println()
+	fmt.Println("FIELD KEYS")
+	fmt.Println("  desc: | description:")
+	fmt.Println("  p: | priority:")
+	fmt.Println("  label: | labels:")
+	fmt.Println("  ac: | acceptance:")
+	fmt.Println()
+	fmt.Println("OUTPUT")
+	fmt.Println("  Valid input: stdout summary + generated sf commands")
+	fmt.Println("  Malformed input: stderr errors with line numbers, exits 1")
 	fmt.Println()
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 }
@@ -1981,7 +2013,7 @@ func runCLI(args []string) {
 			showCommandHelp(command)
 			printCurrentDefaultProject(config)
 			return
-		case "comment", "user", "worker", "role", "config", "beads", "bead", "bd":
+		case "comment", "parse", "user", "worker", "role", "config", "beads", "bead", "bd":
 			showCommandHelp(command)
 			return
 		}
@@ -1995,7 +2027,7 @@ func runCLI(args []string) {
 		}
 	}
 
-	// Login, register, logout and local beads commands don't require prior authentication
+	// Login, register, logout and local commands don't require prior authentication
 	if command == "login" {
 		handleLoginCommand(config)
 		return
@@ -2010,6 +2042,10 @@ func runCLI(args []string) {
 	}
 	if command == "beads" || command == "bead" || command == "bd" {
 		handleBeadsCommand(subArgs)
+		return
+	}
+	if command == "parse" {
+		handleParseCommand(subArgs)
 		return
 	}
 
@@ -2159,6 +2195,9 @@ func printCLIUsage() {
 	fmt.Println("  sf comment update <comment_id> -text <text>")
 	fmt.Println("  sf comment delete|rm <comment_id>")
 	fmt.Println("  sf comment history <comment_id>")
+	fmt.Println()
+	fmt.Println("Parse:")
+	fmt.Println("  sf parse -f <filename.md>         Parse markdown entities into sf create commands")
 	fmt.Println()
 	fmt.Println("Users:")
 	fmt.Println("  sf user list|ls                   List all users")
@@ -2821,6 +2860,9 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 		}
 		if priority := extractFlag(args, "-priority"); priority != "" {
 			body["priority"] = priority
+		}
+		if labels := extractFlag(args, "-labels"); labels != "" {
+			body["labels"] = parseCSVList(labels)
 		}
 		acceptance := extractFlag(args, "-acceptance")
 		if acceptance == "" {
@@ -3756,6 +3798,18 @@ func extractFlag(args []string, flag string) string {
 		}
 	}
 	return ""
+}
+
+func parseCSVList(input string) []string {
+	parts := strings.Split(input, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		item := strings.TrimSpace(p)
+		if item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
 }
 
 func slugifyIdentifier(value string) string {
