@@ -1902,7 +1902,11 @@ func runCLI(args []string) {
 			showCommandHelp(command)
 			printCurrentDefaultProject(config)
 			return
-		case "task", "user", "worker", "role", "config", "beads", "bead", "bd":
+		case "task":
+			showCommandHelp(command)
+			printCurrentDefaultProject(config)
+			return
+		case "user", "worker", "role", "config", "beads", "bead", "bd":
 			showCommandHelp(command)
 			return
 		}
