@@ -8,23 +8,23 @@ Typing "review" means read all the documentation and make suggestions on the ove
 ### "continue"
 
 Typing **"continue"** means reread the following files to continue creating and extending the project:
-- `@docs/RULES.md`
-- `@docs/DESIGN.md`
-- `@/TODO.md`
+- `RULES.md`
+- `TODO.md`
+- `./docs/DESIGN.md`
 
 ### "suggest"
 
 Typing **"propose"**, **"suggest"**, or **"next"** means reread the following files to suggest what should be done next, but **DO NOT DO** the work:
-- `@docs/RULES.md`
-- `@docs/DESIGN.md`
-- `@/TODO.md`
+- `RULES.md`
+- `TODO.md`
+- `./docs/DESIGN.md`
 
 ## Project Documentation
 
 **MUST** maintain these top-level documentation files:
-- `README.md` - Explains in simple terms what the project is and how to build it
-- `USER_GUIDE.md` - Explains all use cases and functionality
-- `TODO.md` - Explains tasks carried out and to be carried out
+- `/README.md` - Explains in simple terms what the project is and how to build it
+- `/USER_GUIDE.md` - Explains all use cases and functionality
+- `/TODO.md` - Explains tasks carried out and to be carried out
 
 **Generated documentation:**
 

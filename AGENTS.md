@@ -1,6 +1,5 @@
-@XXX means "read this file XXX"
-@docs/RULES.md
-@docs/DESIGN.md
+@import RULES.md
+@import docs/DESIGN.md
 
 ## Landing the Plane (Session Completion)
 

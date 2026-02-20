@@ -166,6 +166,22 @@ sf project list
 # update feature(s) of a project
 sf project update -project_id XXXX (-name XXX -description YYYY)
 
+# project files CRUD (uses -project_id or current default project)
+sf project file list|ls (-project_id XXX)
+sf project file get <file_id> (-project_id XXX)
+sf project file create <name> (-project_id XXX) (-content "...")
+sf project file update <file_id> (-project_id XXX) (-name "...") (-content "...")
+sf project file rm|delete <file_id> (-project_id XXX)
+
+# project notes CRUD (uses -project_id or current default project)
+sf project note list|ls (-project_id XXX)
+sf project note get <note_id> (-project_id XXX)
+sf project note create <title> (-project_id XXX) (-content "...")
+sf project note update <note_id> (-project_id XXX) (-title "...") (-content "...")
+sf project note rm|delete <note_id> (-project_id XXX)
+
+# if -project_id is omitted for file/note, CLI uses current default project (or "default")
+
 ```
 
 ### Role
@@ -235,6 +251,30 @@ sf task list|ls (-project_id N) (-status N) (-type N) (-owner N)
 
 ```
 
+### Comments
+
+`sf comment` commands are available to ADMIN, USER, WORKER and ORCHESTRATOR
+
+```bash
+# list comments for an entity
+sf comment list|ls (-project_id XXX | -task_id XXX)
+
+# create a comment
+sf comment create (-project_id XXX | -task_id XXX) -text "The comment"
+
+# get/update/delete a comment
+sf comment get <comment_id>
+sf comment update <comment_id> -text "Updated text"
+sf comment rm|delete <comment_id>
+
+# show immutable edit/delete history
+sf comment history <comment_id>
+
+# ownership rules:
+# - only owner can update/rm a comment
+# - rm is soft-delete (default list excludes deleted)
+```
+
 ### Worker-Only Task calls
 
 Only WORKER can make the following calls or they will fail.
@@ -277,6 +317,74 @@ sf task unassign -task_id Y -worker_id XXXXX
 sf version
 ```
 
+### beads
+
+Manages bead descriptors via an intermediary mardown file.  The file is maintained outside of beads then
+it can be pushed into beads commands when necessary.
+
+Does not talk to the server or require it.
+
+Defaults the file (-f <filename>) to TODO.md
+
+No command will show a friendly usage
+
+```bash
+./sf bd|bead|beads 
+```
+
+Lists in a friendly way the beads
+
+
+```bash
+./sf bd|bead|beads ls|list -f <filename>
+```
+
+Formats a beads markdown file - adds entrys that are missing (with no value)
+
+```bash
+./sf bd|bead|beads format|fmt|tidy|fix -f <filename>
+```
+
+Validates a beads markdown file - informs any that are missing fields
+
+```bash
+./sf bd|bead|beads test|validate -f <filename>
+```
+
+Converts a beads markdown file to beads instructions and prints to STDOUT
+Passing the optional -apply will apply execute the calls.
+
+```bash
+./sf bd|bead|beads import -f <filename> (-apply)
+```
+
+Exports all beads from beads itself to the markdown format
+```bash
+./sf bd|bead|beads export -f <filename> 
+```
+
+### Markdown format
+
+multiple beads can be imported from a file using a format
+
+--------------------------------------------------------------------------------
+title: 
+desc:
+priority:
+type: (task)
+ac: 
+--------------------------------------------------------------------------------
+
+first bead is normally the EPIC (see type).  If there is no EPIC, refuse to create the beads.
+three lines denotes start and end of bead
+id: (optional) if present upgrade the existing bead id to match. if misssing create a new bead
+title: is the bead title
+desc: or description: is the description - multiline accept whitespace
+priority: 1, 2, 3
+type: task, epic, chore - reject any that do not match valid beads types
+ac: the multiline acceptance criteria including whitespace.
+
+Once a bead is created, write back into the file the id: entry at that point in the file
 ### Status
 
 ```bash
@@ -284,7 +392,6 @@ sf version
 ```
 
 Returns a pretty printed json explaining count of epics, stories, bugs by status.
-
 
 ### Help
 

@@ -73,7 +73,7 @@ capture: project_pos_id=id\s*:\s*([a-z0-9-]+)
 actual_cmd: sf project create "my project"
 actual_exit: 0
 pass: true
-actual_stdout: Project created: ⏎ created_at: 2026-02-20T09:52:17Z ⏎ created_by: d70c80e6-7c9e-4187-a8e4-4101f4d0e76e ⏎ description: my project ⏎ id: 0b917e00-cd29-47e1-bfe6-9d2a1efb23b7 ⏎ name: my project...
+actual_stdout: Project created: ⏎ created_at: 2026-02-20T10:11:22Z ⏎ created_by: 8e458f97-a918-49f9-ba41-8b01def6444f ⏎ description: my project ⏎ id: 8a6b5c06-d3f8-493a-b48a-f85f34adcd9e ⏎ name: my project...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -84,7 +84,7 @@ stdout: Found
 actual_cmd: sf project ls
 actual_exit: 0
 pass: true
-actual_stdout: Found 2 projects: ⏎  ⏎ ID:   46eda86f-e9df-4a68-8be1-b626b47e2dc6 ⏎ Name: default ⏎ Desc: Default project for general tasks ⏎  ⏎ ID:   0b917e00-cd29-47e1-bfe6-9d2a1efb23b7 ⏎ Name: my pro...
+actual_stdout: Found 2 projects: ⏎  ⏎ ID:   b24cabd7-f345-4ac3-a189-e7d5abf30809 ⏎ Name: default ⏎ Desc: Default project for general tasks ⏎  ⏎ ID:   8a6b5c06-d3f8-493a-b48a-f85f34adcd9e ⏎ Name: my pro...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ capture: project_id=id\s*:\s*([a-z0-9-]+)
 actual_cmd: sf project create -project_id proj_cli_harness -name "CLI Harness Project" -description "project for cli harness"
 actual_exit: 0
 pass: true
-actual_stdout: Project created: ⏎ created_at: 2026-02-20T09:52:17Z ⏎ created_by: d70c80e6-7c9e-4187-a8e4-4101f4d0e76e ⏎ description: project for cli harness ⏎ id: eeab37a7-72cb-46c7-8109-9555c1239a68 ⏎ nam...
+actual_stdout: Project created: ⏎ created_at: 2026-02-20T10:11:23Z ⏎ created_by: 8e458f97-a918-49f9-ba41-8b01def6444f ⏎ description: project for cli harness ⏎ id: 5eee4317-b269-4495-9c7b-7e512667edeb ⏎ nam...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -104,10 +104,10 @@ name: project get by id
 cmd: sf project get -project_id ${project_id}
 exit: 0
 stdout: ${project_id}
-actual_cmd: sf project get -project_id eeab37a7-72cb-46c7-8109-9555c1239a68
+actual_cmd: sf project get -project_id 5eee4317-b269-4495-9c7b-7e512667edeb
 actual_exit: 0
 pass: true
-actual_stdout: created_at: 2026-02-20T09:52:17Z ⏎ created_by: d70c80e6-7c9e-4187-a8e4-4101f4d0e76e ⏎ description: project for cli harness ⏎ id: eeab37a7-72cb-46c7-8109-9555c1239a68 ⏎ name: CLI Harness Projec...
+actual_stdout: created_at: 2026-02-20T10:11:23Z ⏎ created_by: 8e458f97-a918-49f9-ba41-8b01def6444f ⏎ description: project for cli harness ⏎ id: 5eee4317-b269-4495-9c7b-7e512667edeb ⏎ name: CLI Harness Projec...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -115,10 +115,10 @@ name: project update by id
 cmd: sf project update -project_id ${project_id} -name "CLI Harness Project Updated"
 exit: 0
 stdout: Project updated:
-actual_cmd: sf project update -project_id eeab37a7-72cb-46c7-8109-9555c1239a68 -name "CLI Harness Project Updated"
+actual_cmd: sf project update -project_id 5eee4317-b269-4495-9c7b-7e512667edeb -name "CLI Harness Project Updated"
 actual_exit: 0
 pass: true
-actual_stdout: Project updated: ⏎ created_at: 2026-02-20T09:52:17Z ⏎ created_by: d70c80e6-7c9e-4187-a8e4-4101f4d0e76e ⏎ description: project for cli harness ⏎ id: eeab37a7-72cb-46c7-8109-9555c1239a68 ⏎ nam...
+actual_stdout: Project updated: ⏎ created_at: 2026-02-20T10:11:23Z ⏎ created_by: 8e458f97-a918-49f9-ba41-8b01def6444f ⏎ description: project for cli harness ⏎ id: 5eee4317-b269-4495-9c7b-7e512667edeb ⏎ nam...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -127,10 +127,10 @@ cmd: sf task create -title "CLI Harness Task" -description "task for cli harness
 exit: 0
 stdout: "id"
 capture: task_id="id"\s*:\s*"([a-z0-9-]+)"
-actual_cmd: sf task create -title "CLI Harness Task" -description "task for cli harness" -project_id eeab37a7-72cb-46c7-8109-9555c1239a68 -json
+actual_cmd: sf task create -title "CLI Harness Task" -description "task for cli harness" -project_id 5eee4317-b269-4495-9c7b-7e512667edeb -json
 actual_exit: 0
 pass: true
-actual_stdout: Task created: ⏎ { ⏎   "created_at": "2026-02-20T09:52:17Z", ⏎   "created_by": "d70c80e6-7c9e-4187-a8e4-4101f4d0e76e", ⏎   "description": "task for cli harness", ⏎   "id": "edb097c9-a8c5-4a65...
+actual_stdout: Task created: ⏎ { ⏎   "created_at": "2026-02-20T10:11:23Z", ⏎   "created_by": "8e458f97-a918-49f9-ba41-8b01def6444f", ⏎   "description": "task for cli harness", ⏎   "id": "2166759d-a3cf-4d9d...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -138,10 +138,10 @@ name: task create positional title defaults
 cmd: sf task create "bar" -project_id ${project_id} -json
 exit: 0
 stdout: "title";;"bar"
-actual_cmd: sf task create "bar" -project_id eeab37a7-72cb-46c7-8109-9555c1239a68 -json
+actual_cmd: sf task create "bar" -project_id 5eee4317-b269-4495-9c7b-7e512667edeb -json
 actual_exit: 0
 pass: true
-actual_stdout: Task created: ⏎ { ⏎   "created_at": "2026-02-20T09:52:17Z", ⏎   "created_by": "d70c80e6-7c9e-4187-a8e4-4101f4d0e76e", ⏎   "description": "", ⏎   "id": "52a19765-4342-4300-9294-87afd4554065",...
+actual_stdout: Task created: ⏎ { ⏎   "created_at": "2026-02-20T10:11:23Z", ⏎   "created_by": "8e458f97-a918-49f9-ba41-8b01def6444f", ⏎   "description": "", ⏎   "id": "1c5be552-da44-49ff-ac26-8488a95d42cf",...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -149,10 +149,10 @@ name: task list alias ls
 cmd: sf task ls -project_id ${project_id}
 exit: 0
 stdout: Found
-actual_cmd: sf task ls -project_id eeab37a7-72cb-46c7-8109-9555c1239a68
+actual_cmd: sf task ls -project_id 5eee4317-b269-4495-9c7b-7e512667edeb
 actual_exit: 0
 pass: true
-actual_stdout: Found 2 tasks: ⏎  ⏎ ID:     edb097c9-a8c5-4a65-bb93-1995a687a609 ⏎ Title:  CLI Harness Task ⏎ Status: idle ⏎ Priority: medium ⏎  ⏎ ID:     52a19765-4342-4300-9294-87afd4554065 ⏎ Title:...
+actual_stdout: Found 2 tasks: ⏎  ⏎ ID:     2166759d-a3cf-4d9d-a31a-21bc334c4ecb ⏎ Title:  CLI Harness Task ⏎ Status: idle ⏎ Priority: medium ⏎  ⏎ ID:     1c5be552-da44-49ff-ac26-8488a95d42cf ⏎ Title:...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -160,10 +160,10 @@ name: task get by captured id
 cmd: sf task get -task_id ${task_id}
 exit: 0
 stdout: ${task_id}
-actual_cmd: sf task get -task_id edb097c9-a8c5-4a65-bb93-1995a687a609
+actual_cmd: sf task get -task_id 2166759d-a3cf-4d9d-a31a-21bc334c4ecb
 actual_exit: 0
 pass: true
-actual_stdout: created_at: 2026-02-20T09:52:17Z ⏎ created_by: d70c80e6-7c9e-4187-a8e4-4101f4d0e76e ⏎ description: task for cli harness ⏎ id: edb097c9-a8c5-4a65-bb93-1995a687a609 ⏎ is_complete: false ⏎ is_d...
+actual_stdout: created_at: 2026-02-20T10:11:23Z ⏎ created_by: 8e458f97-a918-49f9-ba41-8b01def6444f ⏎ description: task for cli harness ⏎ id: 2166759d-a3cf-4d9d-a31a-21bc334c4ecb ⏎ is_complete: false ⏎ is_d...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -171,10 +171,10 @@ name: task update by captured id
 cmd: sf task update -task_id ${task_id} -description "updated by cli harness"
 exit: 0
 stdout: Task updated:
-actual_cmd: sf task update -task_id edb097c9-a8c5-4a65-bb93-1995a687a609 -description "updated by cli harness"
+actual_cmd: sf task update -task_id 2166759d-a3cf-4d9d-a31a-21bc334c4ecb -description "updated by cli harness"
 actual_exit: 0
 pass: true
-actual_stdout: Task updated: ⏎ created_at: 2026-02-20T09:52:17Z ⏎ created_by: d70c80e6-7c9e-4187-a8e4-4101f4d0e76e ⏎ description: updated by cli harness ⏎ id: edb097c9-a8c5-4a65-bb93-1995a687a609 ⏎ is_comp...
+actual_stdout: Task updated: ⏎ created_at: 2026-02-20T10:11:23Z ⏎ created_by: 8e458f97-a918-49f9-ba41-8b01def6444f ⏎ description: updated by cli harness ⏎ id: 2166759d-a3cf-4d9d-a31a-21bc334c4ecb ⏎ is_comp...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -182,7 +182,7 @@ name: task delete alias rm by captured id
 cmd: sf task rm -task_id ${task_id}
 exit: 0
 stdout: Task deleted
-actual_cmd: sf task rm -task_id edb097c9-a8c5-4a65-bb93-1995a687a609
+actual_cmd: sf task rm -task_id 2166759d-a3cf-4d9d-a31a-21bc334c4ecb
 actual_exit: 0
 pass: true
 actual_stdout: Task deleted ⏎
@@ -197,7 +197,7 @@ capture: user_id=id\s*:\s*([a-z0-9-]+)
 actual_cmd: sf user create -username cli_harness_user -password pass123 -type human
 actual_exit: 0
 pass: true
-actual_stdout: User created: ⏎ created_at: 2026-02-20T09:52:18Z ⏎ id: 3786d9a1-d6b4-434d-8740-5ad8b7c20cc6 ⏎ is_active: true ⏎ type: human ⏎ updated_at: 2026-02-20T09:52:18Z ⏎ username: cli_harness_user ...
+actual_stdout: User created: ⏎ created_at: 2026-02-20T10:11:25Z ⏎ id: ff970826-b9d5-4600-a29f-4cb4f9963920 ⏎ is_active: true ⏎ type: human ⏎ updated_at: 2026-02-20T10:11:25Z ⏎ username: cli_harness_user ...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -216,10 +216,10 @@ name: user get by captured id
 cmd: sf user get -user_id ${user_id}
 exit: 0
 stdout: ${user_id}
-actual_cmd: sf user get -user_id 3786d9a1-d6b4-434d-8740-5ad8b7c20cc6
+actual_cmd: sf user get -user_id ff970826-b9d5-4600-a29f-4cb4f9963920
 actual_exit: 0
 pass: true
-actual_stdout: created_at: 2026-02-20T09:52:18Z ⏎ id: 3786d9a1-d6b4-434d-8740-5ad8b7c20cc6 ⏎ is_active: true ⏎ type: human ⏎ updated_at: 2026-02-20T09:52:18Z ⏎ username: cli_harness_user ⏎
+actual_stdout: created_at: 2026-02-20T10:11:25Z ⏎ id: ff970826-b9d5-4600-a29f-4cb4f9963920 ⏎ is_active: true ⏎ type: human ⏎ updated_at: 2026-02-20T10:11:25Z ⏎ username: cli_harness_user ⏎
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -242,7 +242,7 @@ capture: role_id=id\s*:\s*([a-z0-9-]+)
 actual_cmd: sf role create -title "CLI Harness Role" -description "role for harness" -goals "validate cli harness"
 actual_exit: 0
 pass: true
-actual_stdout: Role created: ⏎ created_at: 2026-02-20T09:52:18Z ⏎ created_by: d70c80e6-7c9e-4187-a8e4-4101f4d0e76e ⏎ description: role for harness ⏎ goals: validate cli harness ⏎ id: 9f5c124b-3229-4214-9a8...
+actual_stdout: Role created: ⏎ created_at: 2026-02-20T10:11:25Z ⏎ created_by: 8e458f97-a918-49f9-ba41-8b01def6444f ⏎ description: role for harness ⏎ goals: validate cli harness ⏎ id: 66dcbd4f-d049-4c6d-bc1...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -253,7 +253,7 @@ stdout: Found
 actual_cmd: sf role ls
 actual_exit: 0
 pass: true
-actual_stdout: Found 5 roles: ⏎  ⏎ ID:   9f5c124b-3229-4214-9a86-3bfc315e8230 ⏎ Name: CLI Harness Role ⏎  ⏎ ID:   cddfb185-49f6-4855-a9c7-d8c94c8fbc2a ⏎ Name: analyst ⏎  ⏎ ID:   004a8e87-1476-4b84-bc...
+actual_stdout: Found 5 roles: ⏎  ⏎ ID:   66dcbd4f-d049-4c6d-bc1d-fc2dc63cd854 ⏎ Name: CLI Harness Role ⏎  ⏎ ID:   45d92add-d70e-42dd-8979-a3501fc3a653 ⏎ Name: analyst ⏎  ⏎ ID:   853fb145-cf82-4233-98...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -261,10 +261,10 @@ name: role get by captured id
 cmd: sf role get -role_id ${role_id}
 exit: 0
 stdout: ${role_id}
-actual_cmd: sf role get -role_id 9f5c124b-3229-4214-9a86-3bfc315e8230
+actual_cmd: sf role get -role_id 66dcbd4f-d049-4c6d-bc1d-fc2dc63cd854
 actual_exit: 0
 pass: true
-actual_stdout: created_at: 2026-02-20T09:52:18Z ⏎ created_by: d70c80e6-7c9e-4187-a8e4-4101f4d0e76e ⏎ description: role for harness ⏎ goals: validate cli harness ⏎ id: 9f5c124b-3229-4214-9a86-3bfc315e8230 ⏎...
+actual_stdout: created_at: 2026-02-20T10:11:25Z ⏎ created_by: 8e458f97-a918-49f9-ba41-8b01def6444f ⏎ description: role for harness ⏎ goals: validate cli harness ⏎ id: 66dcbd4f-d049-4c6d-bc1d-fc2dc63cd854 ⏎...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -272,10 +272,10 @@ name: role update by captured id
 cmd: sf role update -role_id ${role_id} -description "updated description"
 exit: 0
 stdout: Role updated:
-actual_cmd: sf role update -role_id 9f5c124b-3229-4214-9a86-3bfc315e8230 -description "updated description"
+actual_cmd: sf role update -role_id 66dcbd4f-d049-4c6d-bc1d-fc2dc63cd854 -description "updated description"
 actual_exit: 0
 pass: true
-actual_stdout: Role updated: ⏎ created_at: 2026-02-20T09:52:18Z ⏎ created_by: d70c80e6-7c9e-4187-a8e4-4101f4d0e76e ⏎ description: updated description ⏎ goals:  ⏎ id: 9f5c124b-3229-4214-9a86-3bfc315e8230 �...
+actual_stdout: Role updated: ⏎ created_at: 2026-02-20T10:11:25Z ⏎ created_by: 8e458f97-a918-49f9-ba41-8b01def6444f ⏎ description: updated description ⏎ goals:  ⏎ id: 66dcbd4f-d049-4c6d-bc1d-fc2dc63cd854 �...
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -283,7 +283,7 @@ name: role delete alias rm
 cmd: sf role rm -role_id ${role_id}
 exit: 0
 stdout: Role deleted
-actual_cmd: sf role rm -role_id 9f5c124b-3229-4214-9a86-3bfc315e8230
+actual_cmd: sf role rm -role_id 66dcbd4f-d049-4c6d-bc1d-fc2dc63cd854
 actual_exit: 0
 pass: true
 actual_stdout: Role deleted ⏎
@@ -297,7 +297,7 @@ stdout: Config set:
 actual_cmd: sf config set -key cli.harness.enabled -value true
 actual_exit: 0
 pass: true
-actual_stdout: Config set: ⏎ created_at: 2026-02-20T09:52:19Z ⏎ key: cli.harness.enabled ⏎ updated_at: 2026-02-20T09:52:19Z ⏎ value: true ⏎
+actual_stdout: Config set: ⏎ created_at: 2026-02-20T10:11:26Z ⏎ key: cli.harness.enabled ⏎ updated_at: 2026-02-20T10:11:26Z ⏎ value: true ⏎
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -308,7 +308,7 @@ stdout: cli.harness.enabled
 actual_cmd: sf config get -key cli.harness.enabled
 actual_exit: 0
 pass: true
-actual_stdout: created_at: 2026-02-20T09:52:19Z ⏎ key: cli.harness.enabled ⏎ updated_at: 2026-02-20T09:52:19Z ⏎ value: true ⏎
+actual_stdout: created_at: 2026-02-20T10:11:26Z ⏎ key: cli.harness.enabled ⏎ updated_at: 2026-02-20T10:11:26Z ⏎ value: true ⏎
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -338,7 +338,7 @@ name: project delete alias rm
 cmd: sf project rm -project_id ${project_pos_id}
 exit: 0
 stdout: Project deleted
-actual_cmd: sf project rm -project_id 0b917e00-cd29-47e1-bfe6-9d2a1efb23b7
+actual_cmd: sf project rm -project_id 8a6b5c06-d3f8-493a-b48a-f85f34adcd9e
 actual_exit: 0
 pass: true
 actual_stdout: Project deleted ⏎
