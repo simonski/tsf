@@ -96,6 +96,16 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("GET /api/v1/projects/{project_id}", s.withAuth(s.handleGetProject))
 	mux.HandleFunc("PUT /api/v1/projects/{project_id}", s.withAuth(s.handleUpdateProject))
 	mux.HandleFunc("DELETE /api/v1/projects/{project_id}", s.withAuth(s.handleDeleteProject))
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/files", s.withAuth(s.handleListProjectFiles))
+	mux.HandleFunc("POST /api/v1/projects/{project_id}/files", s.withAuth(s.handleCreateProjectFile))
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/files/{file_id}", s.withAuth(s.handleGetProjectFile))
+	mux.HandleFunc("PUT /api/v1/projects/{project_id}/files/{file_id}", s.withAuth(s.handleUpdateProjectFile))
+	mux.HandleFunc("DELETE /api/v1/projects/{project_id}/files/{file_id}", s.withAuth(s.handleDeleteProjectFile))
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/notes", s.withAuth(s.handleListProjectNotes))
+	mux.HandleFunc("POST /api/v1/projects/{project_id}/notes", s.withAuth(s.handleCreateProjectNote))
+	mux.HandleFunc("GET /api/v1/projects/{project_id}/notes/{note_id}", s.withAuth(s.handleGetProjectNote))
+	mux.HandleFunc("PUT /api/v1/projects/{project_id}/notes/{note_id}", s.withAuth(s.handleUpdateProjectNote))
+	mux.HandleFunc("DELETE /api/v1/projects/{project_id}/notes/{note_id}", s.withAuth(s.handleDeleteProjectNote))
 
 	// Role endpoints
 	mux.HandleFunc("GET /api/v1/roles", s.withAuth(s.handleListRoles))

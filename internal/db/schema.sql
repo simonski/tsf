@@ -37,6 +37,45 @@ CREATE INDEX idx_projects_status ON projects(status);
 CREATE INDEX idx_projects_visibility ON projects(visibility);
 CREATE INDEX idx_projects_created_by ON projects(created_by);
 
+-- Project files: project-scoped named content artifacts
+CREATE TABLE IF NOT EXISTS project_files (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    content TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_by TEXT NOT NULL,
+    updated_by TEXT NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (updated_by) REFERENCES users(id),
+    UNIQUE(project_id, name)
+);
+
+CREATE INDEX idx_project_files_project ON project_files(project_id);
+CREATE INDEX idx_project_files_name ON project_files(name);
+CREATE INDEX idx_project_files_created_by ON project_files(created_by);
+
+-- Project notes: project-scoped notes
+CREATE TABLE IF NOT EXISTS project_notes (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_by TEXT NOT NULL,
+    updated_by TEXT NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (updated_by) REFERENCES users(id)
+);
+
+CREATE INDEX idx_project_notes_project ON project_notes(project_id);
+CREATE INDEX idx_project_notes_title ON project_notes(title);
+CREATE INDEX idx_project_notes_created_by ON project_notes(created_by);
+
 -- Project members: many-to-many relationship between projects and users
 CREATE TABLE IF NOT EXISTS project_members (
     id TEXT PRIMARY KEY,
@@ -253,6 +292,20 @@ CREATE TRIGGER IF NOT EXISTS update_projects_timestamp
     FOR EACH ROW
     BEGIN
         UPDATE projects SET updated_at = datetime('now') WHERE id = NEW.id;
+    END;
+
+CREATE TRIGGER IF NOT EXISTS update_project_files_timestamp
+    AFTER UPDATE ON project_files
+    FOR EACH ROW
+    BEGIN
+        UPDATE project_files SET updated_at = datetime('now') WHERE id = NEW.id;
+    END;
+
+CREATE TRIGGER IF NOT EXISTS update_project_notes_timestamp
+    AFTER UPDATE ON project_notes
+    FOR EACH ROW
+    BEGIN
+        UPDATE project_notes SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
 
 CREATE TRIGGER IF NOT EXISTS update_roles_timestamp 

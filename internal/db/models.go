@@ -29,6 +29,30 @@ type Project struct {
 	UpdatedBy   string    `json:"updated_by"`
 }
 
+// ProjectFile represents a file-like artifact associated with a project
+type ProjectFile struct {
+	ID        string    `json:"id"`
+	ProjectID string    `json:"project_id"`
+	Name      string    `json:"name"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedBy string    `json:"created_by"`
+	UpdatedBy string    `json:"updated_by"`
+}
+
+// ProjectNote represents a note associated with a project
+type ProjectNote struct {
+	ID        string    `json:"id"`
+	ProjectID string    `json:"project_id"`
+	Title     string    `json:"title"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedBy string    `json:"created_by"`
+	UpdatedBy string    `json:"updated_by"`
+}
+
 // ProjectMember represents project membership
 type ProjectMember struct {
 	ID        string    `json:"id"`

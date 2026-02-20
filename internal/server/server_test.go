@@ -322,6 +322,109 @@ func TestTaskWorkflow(t *testing.T) {
 	}
 }
 
+func TestProjectFileAndNoteCRUD(t *testing.T) {
+	s, cleanup := testServer(t)
+	defer cleanup()
+
+	// Create project file
+	rr := doRequest(t, s, "POST", "/api/v1/projects/project-1/files", map[string]string{
+		"name":    "README.md",
+		"content": "hello",
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("Create project file failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	var file map[string]interface{}
+	parseJSON(t, rr, &file)
+	fileID := file["id"].(string)
+
+	// List project files
+	rr = doRequest(t, s, "GET", "/api/v1/projects/project-1/files", nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("List project files failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	var files []map[string]interface{}
+	parseJSON(t, rr, &files)
+	if len(files) != 1 {
+		t.Fatalf("Expected 1 project file, got %d", len(files))
+	}
+
+	// Update project file
+	rr = doRequest(t, s, "PUT", "/api/v1/projects/project-1/files/"+fileID, map[string]string{
+		"content": "updated",
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Update project file failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	// Get project file
+	rr = doRequest(t, s, "GET", "/api/v1/projects/project-1/files/"+fileID, nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Get project file failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+	parseJSON(t, rr, &file)
+	if file["content"] != "updated" {
+		t.Fatalf("Expected updated content, got %v", file["content"])
+	}
+
+	// Delete project file
+	rr = doRequest(t, s, "DELETE", "/api/v1/projects/project-1/files/"+fileID, nil)
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("Delete project file failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	// Create project note
+	rr = doRequest(t, s, "POST", "/api/v1/projects/project-1/notes", map[string]string{
+		"title":   "Kickoff",
+		"content": "Start here",
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("Create project note failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	var note map[string]interface{}
+	parseJSON(t, rr, &note)
+	noteID := note["id"].(string)
+
+	// List project notes
+	rr = doRequest(t, s, "GET", "/api/v1/projects/project-1/notes", nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("List project notes failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	var notes []map[string]interface{}
+	parseJSON(t, rr, &notes)
+	if len(notes) != 1 {
+		t.Fatalf("Expected 1 project note, got %d", len(notes))
+	}
+
+	// Update project note
+	rr = doRequest(t, s, "PUT", "/api/v1/projects/project-1/notes/"+noteID, map[string]string{
+		"content": "Updated note",
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Update project note failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+
+	// Get project note
+	rr = doRequest(t, s, "GET", "/api/v1/projects/project-1/notes/"+noteID, nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Get project note failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+	parseJSON(t, rr, &note)
+	if note["content"] != "Updated note" {
+		t.Fatalf("Expected updated note content, got %v", note["content"])
+	}
+
+	// Delete project note
+	rr = doRequest(t, s, "DELETE", "/api/v1/projects/project-1/notes/"+noteID, nil)
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("Delete project note failed: %d, body: %s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestTaskDependencies(t *testing.T) {
 	s, cleanup := testServer(t)
 	defer cleanup()

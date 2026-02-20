@@ -1019,6 +1019,8 @@ func printProjectHelp() {
 	fmt.Println("  set-default <id>      Set default project for commands")
 	fmt.Println("  get-default           Show current default project")
 	fmt.Println("  unset-default         Clear default project")
+	fmt.Println("  file <subcommand>     Manage project files (CRUD)")
+	fmt.Println("  note <subcommand>     Manage project notes (CRUD)")
 	fmt.Println()
 	fmt.Println("GLOBAL OPTIONS")
 	fmt.Println("  -url <url>            Server URL (default: http://localhost:8080)")
@@ -1049,6 +1051,12 @@ func printProjectHelp() {
 	fmt.Println()
 	fmt.Println("  # List projects in JSON format")
 	fmt.Println("  $ sf project list -json")
+	fmt.Println()
+	fmt.Println("  # List files for default project")
+	fmt.Println("  $ sf project file list")
+	fmt.Println()
+	fmt.Println("  # Create a project note")
+	fmt.Println("  $ sf project note create \"Kickoff\" -content \"Architecture decisions\"")
 	fmt.Println()
 	fmt.Println("  # Delete a project (warning: deletes all tasks)")
 	fmt.Println("  $ sf project delete proj_abc123")
@@ -1089,6 +1097,24 @@ func printProjectHelp() {
 	fmt.Println("  sf login              Authentication")
 	fmt.Println()
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+}
+
+func printProjectFileHelp() {
+	fmt.Println("Project File Commands:")
+	fmt.Println("  sf project file list|ls (-project_id <id>)")
+	fmt.Println("  sf project file get <file_id> (-project_id <id>)")
+	fmt.Println("  sf project file create <name> (-project_id <id>) (-content <text>)")
+	fmt.Println("  sf project file update <file_id> (-name <n> -content <text>) (-project_id <id>)")
+	fmt.Println("  sf project file delete|rm <file_id> (-project_id <id>)")
+}
+
+func printProjectNoteHelp() {
+	fmt.Println("Project Note Commands:")
+	fmt.Println("  sf project note list|ls (-project_id <id>)")
+	fmt.Println("  sf project note get <note_id> (-project_id <id>)")
+	fmt.Println("  sf project note create <title> (-project_id <id>) (-content <text>)")
+	fmt.Println("  sf project note update <note_id> (-title <t> -content <text>) (-project_id <id>)")
+	fmt.Println("  sf project note delete|rm <note_id> (-project_id <id>)")
 }
 
 func printTaskHelp() {
@@ -2057,6 +2083,16 @@ func printCLIUsage() {
 	fmt.Println("  sf project delete|rm -project_id <id>  Delete project")
 	fmt.Println("  sf project set <name>             Set active project")
 	fmt.Println("  sf project unset                  Unset active project")
+	fmt.Println("  sf project file list|ls (-project_id <id>)")
+	fmt.Println("  sf project file get <file_id> (-project_id <id>)")
+	fmt.Println("  sf project file create <name> (-project_id <id>) (-content <text>)")
+	fmt.Println("  sf project file update <file_id> (-name <n> -content <text>) (-project_id <id>)")
+	fmt.Println("  sf project file delete|rm <file_id> (-project_id <id>)")
+	fmt.Println("  sf project note list|ls (-project_id <id>)")
+	fmt.Println("  sf project note get <note_id> (-project_id <id>)")
+	fmt.Println("  sf project note create <title> (-project_id <id>) (-content <text>)")
+	fmt.Println("  sf project note update <note_id> (-title <t> -content <text>) (-project_id <id>)")
+	fmt.Println("  sf project note delete|rm <note_id> (-project_id <id>)")
 	fmt.Println()
 	fmt.Println("Tasks:")
 	fmt.Println("  sf task list|ls (-project_id <p> -status <s> -type <t> -owner <o>)  List tasks")
@@ -2145,6 +2181,10 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 
 	subcommand := args[0]
 	switch subcommand {
+	case "file", "files":
+		handleProjectFileCommand(client, config, args[1:])
+	case "note", "notes":
+		handleProjectNoteCommand(client, config, args[1:])
 	case "list", "ls":
 		// Build query parameters
 		queryParams := ""
@@ -2389,6 +2429,249 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 		fmt.Println("Default project cleared")
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown project subcommand: %s\n", subcommand)
+		os.Exit(1)
+	}
+}
+
+func resolveProjectIDForChildResource(args []string, config *cli.Config) string {
+	projectID := extractFlag(args, "-project_id")
+	if projectID != "" {
+		return projectID
+	}
+	if strings.TrimSpace(config.ProjectID) != "" {
+		return config.ProjectID
+	}
+	return "default"
+}
+
+func handleProjectFileCommand(client *cli.Client, config *cli.Config, args []string) {
+	if len(args) == 0 {
+		printProjectFileHelp()
+		printCurrentDefaultProject(config)
+		return
+	}
+
+	subcommand := args[0]
+	projectID := resolveProjectIDForChildResource(args, config)
+	basePath := "/api/v1/projects/" + projectID + "/files"
+
+	switch subcommand {
+	case "list", "ls":
+		data, err := client.Request("GET", basePath, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if config.JSON {
+			printResponseData(data, config)
+			return
+		}
+		var files []map[string]interface{}
+		if err := parseJSON(data, &files); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing response: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Found %d files in project %s:\n\n", len(files), projectID)
+		for _, f := range files {
+			fmt.Printf("ID:   %v\n", f["id"])
+			fmt.Printf("Name: %v\n", f["name"])
+			fmt.Println()
+		}
+	case "get":
+		fileID := extractFlag(args, "-file_id")
+		if fileID == "" && len(args) > 1 {
+			fileID = args[1]
+		}
+		if fileID == "" {
+			fmt.Fprintln(os.Stderr, "Error: file ID required")
+			os.Exit(1)
+		}
+		data, err := client.Request("GET", basePath+"/"+fileID, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		printResponseData(data, config)
+	case "create":
+		name := extractFlag(args, "-name")
+		if name == "" && len(args) > 1 {
+			name = args[1]
+		}
+		if name == "" {
+			fmt.Fprintln(os.Stderr, "Error: file name required")
+			os.Exit(1)
+		}
+		body := map[string]interface{}{
+			"name":    name,
+			"content": extractFlag(args, "-content"),
+		}
+		data, err := client.Request("POST", basePath, body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Project file created:")
+		printResponseData(data, config)
+	case "update":
+		fileID := extractFlag(args, "-file_id")
+		if fileID == "" && len(args) > 1 {
+			fileID = args[1]
+		}
+		if fileID == "" {
+			fmt.Fprintln(os.Stderr, "Error: file ID required")
+			os.Exit(1)
+		}
+		body := map[string]interface{}{}
+		if name := extractFlag(args, "-name"); name != "" {
+			body["name"] = name
+		}
+		if content := extractFlag(args, "-content"); content != "" {
+			body["content"] = content
+		}
+		if len(body) == 0 {
+			fmt.Fprintln(os.Stderr, "Error: at least one field to update required")
+			os.Exit(1)
+		}
+		data, err := client.Request("PUT", basePath+"/"+fileID, body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Project file updated:")
+		printResponseData(data, config)
+	case "delete", "rm":
+		fileID := extractFlag(args, "-file_id")
+		if fileID == "" && len(args) > 1 {
+			fileID = args[1]
+		}
+		if fileID == "" {
+			fmt.Fprintln(os.Stderr, "Error: file ID required")
+			os.Exit(1)
+		}
+		_, err := client.Request("DELETE", basePath+"/"+fileID, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Project file '%s' deleted\n", fileID)
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown project file subcommand: %s\n", subcommand)
+		os.Exit(1)
+	}
+}
+
+func handleProjectNoteCommand(client *cli.Client, config *cli.Config, args []string) {
+	if len(args) == 0 {
+		printProjectNoteHelp()
+		printCurrentDefaultProject(config)
+		return
+	}
+
+	subcommand := args[0]
+	projectID := resolveProjectIDForChildResource(args, config)
+	basePath := "/api/v1/projects/" + projectID + "/notes"
+
+	switch subcommand {
+	case "list", "ls":
+		data, err := client.Request("GET", basePath, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if config.JSON {
+			printResponseData(data, config)
+			return
+		}
+		var notes []map[string]interface{}
+		if err := parseJSON(data, &notes); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing response: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Found %d notes in project %s:\n\n", len(notes), projectID)
+		for _, n := range notes {
+			fmt.Printf("ID:    %v\n", n["id"])
+			fmt.Printf("Title: %v\n", n["title"])
+			fmt.Println()
+		}
+	case "get":
+		noteID := extractFlag(args, "-note_id")
+		if noteID == "" && len(args) > 1 {
+			noteID = args[1]
+		}
+		if noteID == "" {
+			fmt.Fprintln(os.Stderr, "Error: note ID required")
+			os.Exit(1)
+		}
+		data, err := client.Request("GET", basePath+"/"+noteID, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		printResponseData(data, config)
+	case "create":
+		title := extractFlag(args, "-title")
+		if title == "" && len(args) > 1 {
+			title = args[1]
+		}
+		if title == "" {
+			fmt.Fprintln(os.Stderr, "Error: note title required")
+			os.Exit(1)
+		}
+		body := map[string]interface{}{
+			"title":   title,
+			"content": extractFlag(args, "-content"),
+		}
+		data, err := client.Request("POST", basePath, body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Project note created:")
+		printResponseData(data, config)
+	case "update":
+		noteID := extractFlag(args, "-note_id")
+		if noteID == "" && len(args) > 1 {
+			noteID = args[1]
+		}
+		if noteID == "" {
+			fmt.Fprintln(os.Stderr, "Error: note ID required")
+			os.Exit(1)
+		}
+		body := map[string]interface{}{}
+		if title := extractFlag(args, "-title"); title != "" {
+			body["title"] = title
+		}
+		if content := extractFlag(args, "-content"); content != "" {
+			body["content"] = content
+		}
+		if len(body) == 0 {
+			fmt.Fprintln(os.Stderr, "Error: at least one field to update required")
+			os.Exit(1)
+		}
+		data, err := client.Request("PUT", basePath+"/"+noteID, body)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Project note updated:")
+		printResponseData(data, config)
+	case "delete", "rm":
+		noteID := extractFlag(args, "-note_id")
+		if noteID == "" && len(args) > 1 {
+			noteID = args[1]
+		}
+		if noteID == "" {
+			fmt.Fprintln(os.Stderr, "Error: note ID required")
+			os.Exit(1)
+		}
+		_, err := client.Request("DELETE", basePath+"/"+noteID, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Project note '%s' deleted\n", noteID)
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown project note subcommand: %s\n", subcommand)
 		os.Exit(1)
 	}
 }
