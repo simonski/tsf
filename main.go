@@ -55,7 +55,7 @@ func main() {
 		runInitDB(os.Args[2:])
 	case "tui", "-tui":
 		runTUI(os.Args[2:])
-	case "login", "register", "logout", "project", "task", "user", "role", "config", "status":
+	case "login", "register", "logout", "project", "task", "user", "role", "config", "status", "bd", "bead", "beads":
 		runCLI(os.Args[1:])
 	case "version", "-v", "--version":
 		fmt.Println(strings.TrimSpace(version))
@@ -95,6 +95,7 @@ func printUsage() {
 	fmt.Println("  role          Manage roles")
 	fmt.Println("  config        Manage configuration")
 	fmt.Println("  status        Show task statistics by type and status")
+	fmt.Println("  beads         Manage beads markdown import/export workflow (aliases: bead, bd)")
 	fmt.Println()
 	fmt.Println("Note: Use 'sf worker' daemon for workers, worker CLI commands are under 'sf task'")
 	fmt.Println()
@@ -126,6 +127,8 @@ func showCommandHelp(command string) {
 		printRoleHelp()
 	case "config":
 		printConfigHelp()
+	case "beads", "bead", "bd":
+		printBeadsHelp()
 	default:
 		fmt.Fprintf(os.Stderr, "No detailed help available for '%s'\n\n", command)
 		printUsage()
@@ -1605,6 +1608,42 @@ func printConfigHelp() {
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 }
 
+func printBeadsHelp() {
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println("  SF BEADS - Local Beads Markdown Workflow")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println()
+	fmt.Println("DESCRIPTION")
+	fmt.Println("  Manage bead descriptors through a local markdown file.")
+	fmt.Println("  This command does not call the sf server or require authentication.")
+	fmt.Println()
+	fmt.Println("USAGE")
+	fmt.Println("  sf beads <subcommand> [options]")
+	fmt.Println("  sf bead  <subcommand> [options]")
+	fmt.Println("  sf bd    <subcommand> [options]")
+	fmt.Println()
+	fmt.Println("SUBCOMMANDS")
+	fmt.Println("  list|ls                 List beads in markdown file (-f required)")
+	fmt.Println("  format|fmt|tidy|fix     Add missing fields in markdown file")
+	fmt.Println("  test|validate           Validate required fields in markdown file")
+	fmt.Println("  import                  Print bd commands from markdown (-apply to execute)")
+	fmt.Println("  export                  Export bd issues to markdown file")
+	fmt.Println()
+	fmt.Println("OPTIONS")
+	fmt.Println("  -f <filename>           Markdown file path")
+	fmt.Println("  -apply                  Execute generated bd commands (import only)")
+	fmt.Println()
+	fmt.Println("EXAMPLES")
+	fmt.Println("  sf beads list -f beads.md")
+	fmt.Println("  sf beads format -f beads.md")
+	fmt.Println("  sf beads validate -f beads.md")
+	fmt.Println("  sf beads import -f beads.md")
+	fmt.Println("  sf beads import -f beads.md -apply")
+	fmt.Println("  sf beads export -f beads.md")
+	fmt.Println()
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+}
+
 func runServer(args []string) {
 	fs := flag.NewFlagSet("server", flag.ExitOnError)
 	dbPath := fs.String("f", "", "Path to database file (default: ~/.config/sf/sf.db)")
@@ -1839,6 +1878,7 @@ func runCLI(args []string) {
 	}
 
 	command := args[0]
+	subArgs := filterNonFlags(args[1:])
 
 	// Check for -h flag before requiring authentication
 	for _, arg := range args[1:] {
@@ -1855,7 +1895,7 @@ func runCLI(args []string) {
 		os.Exit(1)
 	}
 
-	// Login, register, and logout don't require prior authentication
+	// Login, register, logout and local beads commands don't require prior authentication
 	if command == "login" {
 		handleLoginCommand(config)
 		return
@@ -1868,6 +1908,10 @@ func runCLI(args []string) {
 		handleLogoutCommand()
 		return
 	}
+	if command == "beads" || command == "bead" || command == "bd" {
+		handleBeadsCommand(subArgs)
+		return
+	}
 
 	if config.Username == "" || config.Password == "" {
 		fmt.Fprintln(os.Stderr, "Error: Username and password required")
@@ -1878,9 +1922,6 @@ func runCLI(args []string) {
 	}
 
 	client := cli.NewClient(config)
-
-	// Extract subcommand and remaining args (skip flags)
-	subArgs := filterNonFlags(args[1:])
 
 	switch command {
 	case "project":
@@ -1984,6 +2025,15 @@ func printCLIUsage() {
 	fmt.Println("  sf config list               List all config")
 	fmt.Println("  sf config set -key K -val V  Set config value")
 	fmt.Println("  sf config delete -key K      Delete config value")
+	fmt.Println()
+	fmt.Println("Beads:")
+	fmt.Println("  sf beads                         List beads (aliases: sf bead, sf bd)")
+	fmt.Println("  sf beads list -f <file>         List beads from markdown file")
+	fmt.Println("  sf beads format -f <file>       Normalize markdown bead blocks")
+	fmt.Println("  sf beads validate -f <file>     Validate markdown bead blocks")
+	fmt.Println("  sf beads import -f <file>       Print bd commands from markdown")
+	fmt.Println("  sf beads import -f <file> -apply  Apply commands via bd and write IDs")
+	fmt.Println("  sf beads export -f <file>       Export bd issues into markdown format")
 	fmt.Println()
 	fmt.Println("Global flags:")
 	fmt.Println("  -url <url>        Server URL (default: http://localhost:8080)")
