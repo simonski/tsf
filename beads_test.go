@@ -73,3 +73,12 @@ func TestContainsEpic(t *testing.T) {
 		t.Fatalf("expected true when epic present")
 	}
 }
+
+func TestGetBeadsFilenameDefaultsToTODO(t *testing.T) {
+	if got := getBeadsFilename([]string{"list"}); got != "TODO.md" {
+		t.Fatalf("expected default TODO.md, got %q", got)
+	}
+	if got := getBeadsFilename([]string{"list", "-f", "custom.md"}); got != "custom.md" {
+		t.Fatalf("expected custom.md, got %q", got)
+	}
+}

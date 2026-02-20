@@ -17,6 +17,8 @@ var validBeadTypes = map[string]bool{
 	"chore": true,
 }
 
+const defaultBeadsFile = "TODO.md"
+
 type beadRecord struct {
 	ID       string
 	Title    string
@@ -41,11 +43,7 @@ func handleBeadsCommand(args []string) {
 
 	switch subcommand {
 	case "list", "ls":
-		filename := extractFlag(args, "-f")
-		if filename == "" {
-			fmt.Fprintln(os.Stderr, "Error: -f flag required")
-			os.Exit(1)
-		}
+		filename := getBeadsFilename(args)
 		records, err := parseBeadsMarkdownFile(filename)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -53,11 +51,7 @@ func handleBeadsCommand(args []string) {
 		}
 		printBeadRecords(records)
 	case "format", "fmt", "tidy", "fix":
-		filename := extractFlag(args, "-f")
-		if filename == "" {
-			fmt.Fprintln(os.Stderr, "Error: -f flag required")
-			os.Exit(1)
-		}
+		filename := getBeadsFilename(args)
 		records, err := parseBeadsMarkdownFile(filename)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -69,11 +63,7 @@ func handleBeadsCommand(args []string) {
 		}
 		fmt.Printf("Formatted %d bead entries in %s\n", len(records), filename)
 	case "test", "validate":
-		filename := extractFlag(args, "-f")
-		if filename == "" {
-			fmt.Fprintln(os.Stderr, "Error: -f flag required")
-			os.Exit(1)
-		}
+		filename := getBeadsFilename(args)
 		records, err := parseBeadsMarkdownFile(filename)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -91,11 +81,7 @@ func handleBeadsCommand(args []string) {
 		}
 		fmt.Printf("Validation passed: %d bead entries\n", len(records))
 	case "import":
-		filename := extractFlag(args, "-f")
-		if filename == "" {
-			fmt.Fprintln(os.Stderr, "Error: -f flag required")
-			os.Exit(1)
-		}
+		filename := getBeadsFilename(args)
 		apply := hasFlag(args, "-apply")
 		records, err := parseBeadsMarkdownFile(filename)
 		if err != nil {
@@ -144,11 +130,7 @@ func handleBeadsCommand(args []string) {
 			fmt.Printf("Applied %d bead entries and updated %s\n", createdOrUpdated, filename)
 		}
 	case "export":
-		filename := extractFlag(args, "-f")
-		if filename == "" {
-			fmt.Fprintln(os.Stderr, "Error: -f flag required")
-			os.Exit(1)
-		}
+		filename := getBeadsFilename(args)
 		records, err := exportBeadRecordsFromBD()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -163,6 +145,13 @@ func handleBeadsCommand(args []string) {
 		fmt.Fprintf(os.Stderr, "Unknown beads subcommand: %s\n", subcommand)
 		os.Exit(1)
 	}
+}
+
+func getBeadsFilename(args []string) string {
+	if filename := extractFlag(args, "-f"); filename != "" {
+		return filename
+	}
+	return defaultBeadsFile
 }
 
 func parseBeadsMarkdownFile(filename string) ([]beadRecord, error) {
