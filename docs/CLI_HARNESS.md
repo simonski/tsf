@@ -43,7 +43,7 @@ name: project create positional name
 cmd: sf project create "my project"
 exit: 0
 stdout: Project created:
-capture: project_pos_id="id"\s*:\s*"([^"]+)"
+capture: project_pos_id=id\s*:\s*([a-z0-9-]+)
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ name: project create explicit id
 cmd: sf project create -project_id proj_cli_harness -name "CLI Harness Project" -description "project for cli harness"
 exit: 0
 stdout: Project created:
-capture: project_id="id"\s*:\s*"([^"]+)"
+capture: project_id=id\s*:\s*([a-z0-9-]+)
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ name: task create json and capture task id
 cmd: sf task create -title "CLI Harness Task" -description "task for cli harness" -project_id ${project_id} -json
 exit: 0
 stdout: "id"
-capture: task_id="id"\s*:\s*"([^"]+)"
+capture: task_id="id"\s*:\s*"([a-z0-9-]+)"
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ name: user create
 cmd: sf user create -username cli_harness_user -password pass123 -type human
 exit: 0
 stdout: User created:
-capture: user_id="id"\s*:\s*"([^"]+)"
+capture: user_id=id\s*:\s*([a-z0-9-]+)
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -145,7 +145,7 @@ name: role create and capture role id
 cmd: sf role create -title "CLI Harness Role" -description "role for harness" -goals "validate cli harness"
 exit: 0
 stdout: Role created:
-capture: role_id="id"\s*:\s*"([^"]+)"
+capture: role_id=id\s*:\s*([a-z0-9-]+)
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------

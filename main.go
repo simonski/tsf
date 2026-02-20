@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -1970,12 +1971,12 @@ func filterNonFlags(args []string) []string {
 			skipNext = false
 			continue
 		}
+		if arg == "-json" || arg == "-v" {
+			continue
+		}
 		if !seenSubcommand {
 			if arg == "-url" || arg == "-username" || arg == "-password" {
 				skipNext = true
-				continue
-			}
-			if arg == "-json" {
 				continue
 			}
 			seenSubcommand = true
@@ -2063,6 +2064,7 @@ func printCLIUsage() {
 	fmt.Println("  -username <name>  Username (or set SF_USERNAME)")
 	fmt.Println("  -password <pass>  Password (or set SF_PASSWORD)")
 	fmt.Println("  -json             Output as JSON")
+	fmt.Println("  -v                Show verbose HTTP request/response")
 }
 
 func handleProjectCommand(client *cli.Client, config *cli.Config, args []string) {
@@ -2103,7 +2105,7 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 			os.Exit(1)
 		}
 		if config.JSON {
-			fmt.Println(string(data))
+			printResponseData(data, config)
 		} else {
 			var projects []map[string]interface{}
 			if err := parseJSON(data, &projects); err != nil {
@@ -2134,7 +2136,7 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "create":
 		projectID := extractFlag(args, "-project_id")
 		name := extractFlag(args, "-name")
@@ -2160,7 +2162,7 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 			os.Exit(1)
 		}
 		fmt.Println("Project created:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "update":
 		projectID := extractFlag(args, "-project_id")
 		if projectID == "" && len(args) > 1 {
@@ -2187,7 +2189,7 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 			os.Exit(1)
 		}
 		fmt.Println("Project updated:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "delete", "rm":
 		projectID := extractFlag(args, "-project_id")
 		if projectID == "" && len(args) > 1 {
@@ -2266,7 +2268,7 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 			os.Exit(0)
 		}
 		if config.JSON {
-			fmt.Println(string(data))
+			printResponseData(data, config)
 		} else {
 			var configVal map[string]interface{}
 			if err := parseJSON(data, &configVal); err == nil {
@@ -2333,7 +2335,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		if config.JSON {
-			fmt.Println(string(data))
+			printResponseData(data, config)
 		} else {
 			var tasks []map[string]interface{}
 			if err := parseJSON(data, &tasks); err != nil {
@@ -2362,7 +2364,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "create":
 		title := extractFlag(args, "-title")
 		if title == "" {
@@ -2397,7 +2399,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Println("Task created:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "update":
 		id := extractFlag(args, "-task_id")
 		if id == "" {
@@ -2430,7 +2432,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Println("Task updated:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "delete", "rm":
 		id := extractFlag(args, "-task_id")
 		if id == "" {
@@ -2468,7 +2470,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Println("Task assigned:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "unassign":
 		id := extractFlag(args, "-task_id")
 		if id == "" {
@@ -2487,7 +2489,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Println("Task unassigned:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "request":
 		body := map[string]interface{}{}
 		if projectID := extractFlag(args, "-project_id"); projectID != "" {
@@ -2502,7 +2504,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		if config.JSON {
-			fmt.Println(string(data))
+			printResponseData(data, config)
 		} else {
 			var task map[string]interface{}
 			if err := parseJSON(data, &task); err != nil {
@@ -2537,7 +2539,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Println("Task returned:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "comment":
 		id := extractFlag(args, "-task_id")
 		if id == "" {
@@ -2556,7 +2558,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Println("Comment added:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "history":
 		id := extractFlag(args, "-task_id")
 		if id == "" {
@@ -2569,7 +2571,7 @@ func handleTaskCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		if config.JSON {
-			fmt.Println(string(data))
+			printResponseData(data, config)
 		} else {
 			var history []map[string]interface{}
 			if err := parseJSON(data, &history); err != nil {
@@ -2617,7 +2619,7 @@ func handleUserCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		if config.JSON {
-			fmt.Println(string(data))
+			printResponseData(data, config)
 		} else {
 			var users []map[string]interface{}
 			if err := parseJSON(data, &users); err != nil {
@@ -2649,7 +2651,7 @@ func handleUserCommand(client *cli.Client, config *cli.Config, args []string) {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "create":
 		username := extractFlag(args, "-username")
 		if username == "" {
@@ -2682,7 +2684,7 @@ func handleUserCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Println("User created:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "enable":
 		username := extractFlag(args, "-username")
 		if username == "" {
@@ -2777,7 +2779,7 @@ func handleWorkerCommand(client *cli.Client, config *cli.Config, args []string) 
 			os.Exit(1)
 		}
 		if config.JSON {
-			fmt.Println(string(data))
+			printResponseData(data, config)
 		} else {
 			var workers []map[string]interface{}
 			if err := parseJSON(data, &workers); err != nil {
@@ -2816,7 +2818,7 @@ func handleWorkerCommand(client *cli.Client, config *cli.Config, args []string) 
 			os.Exit(1)
 		}
 		if config.JSON {
-			fmt.Println(string(data))
+			printResponseData(data, config)
 		} else {
 			fmt.Println("Worker created:")
 			fmt.Printf("Worker ID: %s\n", workerID)
@@ -2894,7 +2896,7 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		if config.JSON {
-			fmt.Println(string(data))
+			printResponseData(data, config)
 		} else {
 			var roles []map[string]interface{}
 			if err := parseJSON(data, &roles); err != nil {
@@ -2919,7 +2921,7 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "create":
 		title := extractFlag(args, "-title")
 		if title == "" {
@@ -2955,7 +2957,7 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Println("Role created:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "update":
 		roleID := extractFlag(args, "-role_id")
 		if roleID == "" {
@@ -2985,7 +2987,7 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		fmt.Println("Role updated:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "delete", "rm":
 		roleID := extractFlag(args, "-role_id")
 		if roleID == "" && len(args) > 1 {
@@ -3013,7 +3015,7 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 			os.Exit(1)
 		}
 		if config.JSON {
-			fmt.Println(string(data))
+			printResponseData(data, config)
 		} else {
 			var history []map[string]interface{}
 			if err := parseJSON(data, &history); err != nil {
@@ -3058,7 +3060,7 @@ func handleConfigCommand(client *cli.Client, config *cli.Config, args []string) 
 			os.Exit(1)
 		}
 		if config.JSON {
-			fmt.Println(string(data))
+			printResponseData(data, config)
 		} else {
 			var configs []map[string]interface{}
 			if err := parseJSON(data, &configs); err != nil {
@@ -3084,7 +3086,7 @@ func handleConfigCommand(client *cli.Client, config *cli.Config, args []string) 
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "set":
 		key := extractFlag(args, "-key")
 		if key == "" {
@@ -3109,7 +3111,7 @@ func handleConfigCommand(client *cli.Client, config *cli.Config, args []string) 
 			os.Exit(1)
 		}
 		fmt.Println("Config set:")
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	case "delete", "rm":
 		key := extractFlag(args, "-key")
 		if key == "" && len(args) > 1 {
@@ -3153,6 +3155,71 @@ func slugifyIdentifier(value string) string {
 
 func parseJSON(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
+}
+
+func printResponseData(data []byte, config *cli.Config) {
+	if config.JSON {
+		printPrettyJSON(data)
+		return
+	}
+	printHumanJSON(data)
+}
+
+func printPrettyJSON(data []byte) {
+	var decoded interface{}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		fmt.Println(string(data))
+		return
+	}
+	pretty, err := json.MarshalIndent(decoded, "", "  ")
+	if err != nil {
+		fmt.Println(string(data))
+		return
+	}
+	fmt.Println(string(pretty))
+}
+
+func printHumanJSON(data []byte) {
+	var decoded interface{}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		fmt.Println(string(data))
+		return
+	}
+	printHumanValue(decoded, 0)
+}
+
+func printHumanValue(v interface{}, indent int) {
+	prefix := strings.Repeat("  ", indent)
+	switch typed := v.(type) {
+	case map[string]interface{}:
+		keys := make([]string, 0, len(typed))
+		for k := range typed {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			val := typed[key]
+			switch val.(type) {
+			case map[string]interface{}, []interface{}:
+				fmt.Printf("%s%s:\n", prefix, key)
+				printHumanValue(val, indent+1)
+			default:
+				fmt.Printf("%s%s: %v\n", prefix, key, val)
+			}
+		}
+	case []interface{}:
+		for _, item := range typed {
+			switch item.(type) {
+			case map[string]interface{}, []interface{}:
+				fmt.Printf("%s-\n", prefix)
+				printHumanValue(item, indent+1)
+			default:
+				fmt.Printf("%s- %v\n", prefix, item)
+			}
+		}
+	default:
+		fmt.Printf("%s%v\n", prefix, typed)
+	}
 }
 
 func generatePassword(length int) string {
@@ -3371,7 +3438,7 @@ func handleLoginCommand(config *cli.Config) {
 	}
 
 	if config.JSON {
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	} else {
 		fmt.Printf("\nSession token saved to ~/.config/sf/session.json\n")
 		fmt.Printf("Token expires at: %s\n", loginResp.ExpiresAt)
@@ -3417,7 +3484,7 @@ func handleRegisterCommand(config *cli.Config) {
 	}
 
 	if config.JSON {
-		fmt.Println(string(data))
+		printResponseData(data, config)
 	} else {
 		fmt.Println("\nCredentials saved to ~/.config/sf/credentials.json")
 		fmt.Println("You can now use 'sf' commands without providing credentials.")

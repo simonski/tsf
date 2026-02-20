@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const DefaultServerURL = "http://localhost:8080"
@@ -13,6 +14,7 @@ type Config struct {
 	Username  string
 	Password  string
 	JSON      bool
+	Verbose   bool
 	ProjectID string
 }
 
@@ -55,8 +57,9 @@ func NewConfig(args []string) (*Config, error) {
 		}
 	}
 
-	// Parse only leading global CLI flags. Anything after the first non-global
-	// token is considered subcommand args and should not affect auth config.
+	// Parse global flags. -json/-v/-url are safe to parse anywhere.
+	// -username/-password are parsed only from leading global section to avoid
+	// colliding with subcommand flags like `sf user create -username ...`.
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "-url":
@@ -66,6 +69,15 @@ func NewConfig(args []string) (*Config, error) {
 			}
 		case "-json":
 			cfg.JSON = true
+		case "-v":
+			cfg.Verbose = true
+		}
+	}
+	for i := 0; i < len(args); i++ {
+		if !strings.HasPrefix(args[i], "-") {
+			break
+		}
+		switch args[i] {
 		case "-username":
 			if i+1 < len(args) {
 				cfg.Username = args[i+1]
@@ -76,8 +88,11 @@ func NewConfig(args []string) (*Config, error) {
 				cfg.Password = args[i+1]
 				i++
 			}
-		default:
-			i = len(args) // stop parsing global flags
+		case "-url":
+			if i+1 < len(args) {
+				cfg.ServerURL = args[i+1]
+				i++
+			}
 		}
 	}
 	if projectID, err := loadProjectContext(); err == nil {
