@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -1963,17 +1964,21 @@ func runCLI(args []string) {
 func filterNonFlags(args []string) []string {
 	var result []string
 	skipNext := false
+	seenSubcommand := false
 	for _, arg := range args {
 		if skipNext {
 			skipNext = false
 			continue
 		}
-		if arg == "-url" || arg == "-username" || arg == "-password" {
-			skipNext = true
-			continue
-		}
-		if arg == "-json" {
-			continue
+		if !seenSubcommand {
+			if arg == "-url" || arg == "-username" || arg == "-password" {
+				skipNext = true
+				continue
+			}
+			if arg == "-json" {
+				continue
+			}
+			seenSubcommand = true
 		}
 		result = append(result, arg)
 	}
@@ -2116,9 +2121,12 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 			}
 		}
 	case "get":
-		id := extractFlag(args, "-task_id")
+		id := extractFlag(args, "-project_id")
+		if id == "" && len(args) > 1 {
+			id = args[1]
+		}
 		if id == "" {
-			fmt.Fprintln(os.Stderr, "Error: -id flag required")
+			fmt.Fprintln(os.Stderr, "Error: -project_id flag required")
 			os.Exit(1)
 		}
 		data, err := client.Request("GET", "/api/v1/projects/"+id, nil)
@@ -2129,20 +2137,23 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 		fmt.Println(string(data))
 	case "create":
 		projectID := extractFlag(args, "-project_id")
-		if projectID == "" {
-			fmt.Fprintln(os.Stderr, "Error: -project_id flag required")
-			os.Exit(1)
-		}
 		name := extractFlag(args, "-name")
+		if name == "" && len(args) > 1 {
+			name = args[1]
+		}
 		if name == "" {
 			fmt.Fprintln(os.Stderr, "Error: -name flag required")
 			os.Exit(1)
 		}
-		desc := extractFlag(args, "-description")
-		body := map[string]string{"id": projectID, "name": name}
-		if desc != "" {
-			body["description"] = desc
+		if projectID == "" {
+			projectID = slugifyIdentifier(name)
 		}
+		desc := extractFlag(args, "-description")
+		if desc == "" {
+			desc = name
+		}
+		body := map[string]string{"id": projectID, "name": name}
+		body["description"] = desc
 		data, err := client.Request("POST", "/api/v1/projects", body)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -2152,6 +2163,9 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 		fmt.Println(string(data))
 	case "update":
 		projectID := extractFlag(args, "-project_id")
+		if projectID == "" && len(args) > 1 {
+			projectID = args[1]
+		}
 		if projectID == "" {
 			fmt.Fprintln(os.Stderr, "Error: -project_id flag required")
 			os.Exit(1)
@@ -2176,6 +2190,9 @@ func handleProjectCommand(client *cli.Client, config *cli.Config, args []string)
 		fmt.Println(string(data))
 	case "delete", "rm":
 		projectID := extractFlag(args, "-project_id")
+		if projectID == "" && len(args) > 1 {
+			projectID = args[1]
+		}
 		if projectID == "" {
 			fmt.Fprintln(os.Stderr, "Error: -project_id flag required")
 			os.Exit(1)
@@ -2906,15 +2923,31 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 	case "create":
 		title := extractFlag(args, "-title")
 		if title == "" {
+			title = extractFlag(args, "-name")
+		}
+		if title == "" {
 			fmt.Fprintln(os.Stderr, "Error: -title flag required")
 			os.Exit(1)
 		}
-		body := map[string]interface{}{"title": title}
+		body := map[string]interface{}{
+			"name":  title,
+			"scope": "global",
+		}
 		if desc := extractFlag(args, "-description"); desc != "" {
 			body["description"] = desc
+		} else {
+			body["description"] = title
 		}
 		if goals := extractFlag(args, "-goals"); goals != "" {
 			body["goals"] = goals
+		} else {
+			body["goals"] = "{}"
+		}
+		if scope := extractFlag(args, "-scope"); scope != "" {
+			body["scope"] = scope
+		}
+		if projectID := extractFlag(args, "-project_id"); projectID != "" {
+			body["project_id"] = projectID
 		}
 		data, err := client.Request("POST", "/api/v1/roles", body)
 		if err != nil {
@@ -2931,7 +2964,10 @@ func handleRoleCommand(client *cli.Client, config *cli.Config, args []string) {
 		}
 		body := map[string]interface{}{}
 		if title := extractFlag(args, "-title"); title != "" {
-			body["title"] = title
+			body["name"] = title
+		}
+		if name := extractFlag(args, "-name"); name != "" {
+			body["name"] = name
 		}
 		if desc := extractFlag(args, "-description"); desc != "" {
 			body["description"] = desc
@@ -3102,6 +3138,17 @@ func extractFlag(args []string, flag string) string {
 		}
 	}
 	return ""
+}
+
+func slugifyIdentifier(value string) string {
+	lower := strings.ToLower(strings.TrimSpace(value))
+	nonAlphaNum := regexp.MustCompile(`[^a-z0-9]+`)
+	slug := nonAlphaNum.ReplaceAllString(lower, "_")
+	slug = strings.Trim(slug, "_")
+	if slug == "" {
+		return "project"
+	}
+	return slug
 }
 
 func parseJSON(data []byte, v interface{}) error {

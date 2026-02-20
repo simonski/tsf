@@ -55,6 +55,8 @@ func NewConfig(args []string) (*Config, error) {
 		}
 	}
 
+	// Parse only leading global CLI flags. Anything after the first non-global
+	// token is considered subcommand args and should not affect auth config.
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "-url":
@@ -74,6 +76,8 @@ func NewConfig(args []string) (*Config, error) {
 				cfg.Password = args[i+1]
 				i++
 			}
+		default:
+			i = len(args) // stop parsing global flags
 		}
 	}
 	if projectID, err := loadProjectContext(); err == nil {
