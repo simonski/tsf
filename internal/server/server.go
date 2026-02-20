@@ -16,6 +16,7 @@ type Server struct {
 	db       *db.DB
 	webFS    embed.FS
 	webAuthn *webauthn.WebAuthn
+	verbose  bool
 }
 
 // New creates a new server instance
@@ -42,6 +43,11 @@ func New(database *db.DB) *Server {
 // SetWebFS sets the embedded web filesystem
 func (s *Server) SetWebFS(webFS embed.FS) {
 	s.webFS = webFS
+}
+
+// SetVerbose enables verbose request/response logging.
+func (s *Server) SetVerbose(verbose bool) {
+	s.verbose = verbose
 }
 
 // SetWebAuthnConfig updates WebAuthn configuration with custom values
@@ -221,6 +227,10 @@ func (s *Server) Router() http.Handler {
 			w.Header().Set("Content-Type", "text/plain")
 			w.Write([]byte("Task Management Server - API available at /api/v1/"))
 		})
+	}
+
+	if s.verbose {
+		return s.withVerboseHTTPLogging(mux)
 	}
 
 	return mux

@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/simonski/task/internal/db"
@@ -118,6 +120,39 @@ func TestHealthEndpoint(t *testing.T) {
 	parseJSON(t, rr, &resp)
 	if resp["status"] != "ok" {
 		t.Errorf("Expected status 'ok', got %v", resp["status"])
+	}
+}
+
+func TestVerboseServerLoggingToStdout(t *testing.T) {
+	s, cleanup := testServer(t)
+	defer cleanup()
+	s.SetVerbose(true)
+
+	origStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create stdout pipe: %v", err)
+	}
+	os.Stdout = w
+	defer func() {
+		os.Stdout = origStdout
+	}()
+
+	req := httptest.NewRequest("GET", "/api/v1/health", nil)
+	rr := httptest.NewRecorder()
+	s.Router().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+
+	w.Close()
+	data, _ := io.ReadAll(r)
+	logs := string(data)
+	if !strings.Contains(logs, "[HTTP Request] GET /api/v1/health") {
+		t.Fatalf("expected verbose request log, got: %s", logs)
+	}
+	if !strings.Contains(logs, "[HTTP Response] 200 OK") {
+		t.Fatalf("expected verbose response log, got: %s", logs)
 	}
 }
 

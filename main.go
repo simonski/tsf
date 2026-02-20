@@ -171,6 +171,9 @@ func printServerHelp() {
 	fmt.Println("                Default: 8080")
 	fmt.Println("                The HTTP port the server will listen on")
 	fmt.Println()
+	fmt.Println("  -v            Enable verbose HTTP request/response logging")
+	fmt.Println("                Logs request/response details to stdout")
+	fmt.Println()
 	fmt.Println("  -h            Show this help message")
 	fmt.Println()
 	fmt.Println("EXAMPLES")
@@ -1733,6 +1736,7 @@ func runServer(args []string) {
 	fs := flag.NewFlagSet("server", flag.ExitOnError)
 	dbPath := fs.String("f", "", "Path to database file (default: ~/.config/sf/sf.db)")
 	port := fs.Int("port", 8080, "Server port")
+	verbose := fs.Bool("v", false, "Verbose request/response logging to stdout")
 	help := fs.Bool("h", false, "Show help")
 
 	fs.Usage = func() {
@@ -1767,6 +1771,7 @@ func runServer(args []string) {
 
 	srv := server.New(database)
 	srv.SetWebFS(web.FS)
+	srv.SetVerbose(*verbose)
 
 	addr := fmt.Sprintf(":%d", *port)
 	log.Printf("Starting server on %s", addr)
